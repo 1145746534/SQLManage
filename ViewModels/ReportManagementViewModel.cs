@@ -130,25 +130,44 @@ namespace SQLManage.ViewModels
         }
         private void DataRefresh()
         {
-            Console.WriteLine($"选择结束时间：{EndDateTime}");
-            var pDB = new SqlAccess().SystemDataAccess;
-            int maxId = pDB.Queryable<Tbl_productiondatamodel>().Max(x => x.ID);
+
             StatisticsDataVisibility = Visibility.Collapsed;
-            List<Tbl_productiondatamodel> productionList = new List<Tbl_productiondatamodel>();
-            if (maxId > 100)
+
+            // 使用资源自动释放
+            using (SqlSugarClient pDB = new SqlAccess().SystemDataAccess)
             {
-                //查询两个序号区间的数据
-                productionList = pDB.Queryable<Tbl_productiondatamodel>().Where(it => SqlFunc.Between(it.ID, maxId - 100, maxId)).OrderBy((sc) => sc.ID, OrderByType.Desc).ToList();
+                try
+                {
+                    // 直接获取最新100条记录
+                    var productionList = pDB.Queryable<Tbl_productiondatamodel>()
+                                          .OrderBy(x => x.ID, OrderByType.Desc)
+                                          .Take(100)
+                                          .ToList();
+
+                    // 优化集合更新
+                    if (IdentificationDatas == null)
+                    {
+                        IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>(
+                            productionList.OrderByDescending(x => x.ID));
+                    }
+                    else
+                    {
+                        // 避免界面闪烁的增量更新
+                        IdentificationDatas.Clear();
+                        foreach (var item in productionList.OrderByDescending(x => x.ID))
+                        {
+                            IdentificationDatas.Add(item);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // 错误处理
+                    MessageBox.Show($"数据加载失败: {ex.Message}");
+                }
             }
-            else
-            {
-                productionList = pDB.Queryable<Tbl_productiondatamodel>().Where(it => SqlFunc.Between(it.ID, 0, maxId)).OrderBy((sc) => sc.ID, OrderByType.Desc).ToList();
-            }
-            IdentificationDatas?.Clear();
-            IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>(productionList);
+
             IdentificationDataVisibility = Visibility.Visible;
-            pDB.Close();
-            pDB.Dispose();
         }
         private void DataInquire()
         {

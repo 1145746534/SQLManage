@@ -5,7 +5,8 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:mah="http://metro.mahapps.com/winfx/xaml/controls"
              xmlns:local="clr-namespace:SQLManage.Views"
-             xmlns:p="http://prismlibrary.com/"
+             xmlns:util="clr-namespace:SQLManage.Util"          
+             xmlns:p="http://prismlibrary.com/" 
              mc:Ignorable="d" 
              d:DesignHeight="640" d:DesignWidth="1280">
     <UserControl.Resources>
@@ -167,7 +168,9 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+            <util:ResultConverter x:Key="ResultConverter" />
         </ResourceDictionary>
+        
     </UserControl.Resources>
     <Border CornerRadius="5">
         <Border.Background>
@@ -189,8 +192,24 @@
                             <DataGridTextColumn Header="序号" Binding="{Binding ID}" Width="0.1*"  />
                             <DataGridTextColumn Header="轮毂型号" Binding="{Binding Model}" Width="0.1*"  />
                             <DataGridTextColumn Header="轮毂样式" Binding="{Binding WheelStyle}" Width="0.1*"  />
-                            <DataGridTextColumn Header="NG编号" Binding="{Binding Remark}" Width="0.1*"  />
-                            <DataGridTextColumn Header="上报方式" Binding="{Binding ReportWay}" Width="0.1*"  />
+                            <DataGridTextColumn Header="轮毂高度" Binding="{Binding WheelHeight}" Width="0.1*"  />
+                            <DataGridTextColumn Header="轮毂温度" Binding="{Binding WheelTemperature}" Width="0.1*"  />
+                            <DataGridTextColumn Header="工站" Binding="{Binding Station}" Width="0.1*"  />
+                            <DataGridTemplateColumn Header="检查结果" Width="0.1*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ResultBool, Converter={StaticResource ResultConverter}}"  />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="NG编号" Width="0.1*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Remark, Converter={StaticResource ResultConverter}}"  />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
+                                <DataGridTextColumn Header="上报方式" Binding="{Binding ReportWay}" Width="0.1*"  />
                             <DataGridTextColumn Header="相似度" Binding="{Binding Similarity}" Width="0.1*"  />
                             <DataGridTextColumn Header="识别时间" Binding="{Binding RecognitionTime, StringFormat={}{0:yyyy/MM/dd HH:mm:ss}}" Width="0.2*" />
                         </DataGrid.Columns>

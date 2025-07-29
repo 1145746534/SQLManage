@@ -60,6 +60,7 @@
     <Compile Include="Models\GetDateTimeModel.cs" />
     <Compile Include="Models\StatisticsDataModel.cs" />
     <Compile Include="Models\Tbl_productiondatamodel.cs" />
+    <Compile Include="Util\BoolToResultConverter.cs" />
     <Compile Include="Util\ExcelHelper.cs" />
     <Compile Include="Util\SqlAccess.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs" />
