@@ -18,7 +18,7 @@ namespace SQLManage.Util
         /// <param name="exportDatas"></param>
         /// <param name="sourceFile"></param>
         /// <param name="targetDir"></param>
-        public void ModifyExcelFile(Queue<ExportDataModel> exportDatas, string sourceFile, string targetDir)
+        public void ModifyExcelFile(Queue<ExportDataModel> exportDatas, string sourceFile, string path)
         {
 
             Application excelApp = null;
@@ -27,7 +27,7 @@ namespace SQLManage.Util
             try
             {
                 string sheetName = "模板";
-                string path = CopyFileWithDateName(sourceFile, targetDir);
+               // string path = CopyFileWithDateName(sourceFile, targetDir);
 
                 // 1. 创建Excel应用实例
                 excelApp = new Application();
@@ -36,9 +36,13 @@ namespace SQLManage.Util
 
                 // 2. 打开工作簿（不破坏格式）
                 workbook = excelApp.Workbooks.Open(path);
-
+                //for (int i = 0; i < workbook.Sheets.Count; i++)
+                //{
+                //    Console.WriteLine(workbook.Sheets[i].);
+                //}
                 // 3. 获取指定工作表
-                Worksheet worksheet = workbook.Sheets[sheetName] as Worksheet;
+                //Worksheet worksheet = workbook.Sheets[sheetName] as Worksheet;
+                Worksheet worksheet = workbook.Sheets[1] as Worksheet;
                 if (worksheet == null)
                 {
                     throw new Exception($"工作表 '{sheetName}' 不存在");
@@ -140,7 +144,7 @@ namespace SQLManage.Util
         }
 
 
-        public string CopyFileWithDateName(string sourceFile, string targetDir)
+        public  string CopyFileWithDateName(string sourceFile, string targetDir)
         {
 
             // 1. 校验源文件是否存在

@@ -11,6 +11,7 @@ using System.Windows;
 using SQLManage.Models;
 using SQLManage.Util;
 using SqlSugar;
+using System.IO;
 
 namespace SQLManage.ViewModels
 {
@@ -19,7 +20,7 @@ namespace SQLManage.ViewModels
         public string Title { get; set; } = "报表管理";
 
         #region==============日期时间相关属性================
-        
+
 
         private DateTime? _startDateTime;
         /// <summary>
@@ -47,7 +48,7 @@ namespace SQLManage.ViewModels
                 SetProperty(ref _endDateTime, value);
             }
         }
-   
+
         #endregion
         #region==============按钮命令相关属性================
         /// <summary>
@@ -206,27 +207,27 @@ namespace SQLManage.ViewModels
             {
                 return;
             }
-          
-            
-                IdentificationDataVisibility = Visibility.Hidden;
-                var pDB = new SqlAccess().SystemDataAccess;
-                // 从数据库读取的数据
-                var productionList = pDB.Queryable<Tbl_productiondatamodel>().Where(it => SqlFunc.Between(it.RecognitionTime, StartDateTime, EndDateTime)).ToList();
-                // 生成统计结果
-                List<StatisticsDataModel> statistics = GenerateStatistics(productionList);
 
-                // 输出结果
-                foreach (var stat in statistics)
-                {
-                    Console.WriteLine($"序号: {stat.Index}, 轮型: {stat.Model}, 样式: {stat.WheelStyle}, " +
-                                      $"数量: {stat.WheelCount}, 合格数: {stat.PassCount}, 主要NG: {stat.MostOfNG}");
-                }
-                StatisticsDatas?.Clear();
-                StatisticsDatas = new ObservableCollection<StatisticsDataModel>(statistics);
-                StatisticsDataVisibility = Visibility.Visible;
-                //EventMessage.SystemMessageDisplay("数据统计完成", MessageType.Success);
 
-            
+            IdentificationDataVisibility = Visibility.Hidden;
+            var pDB = new SqlAccess().SystemDataAccess;
+            // 从数据库读取的数据
+            var productionList = pDB.Queryable<Tbl_productiondatamodel>().Where(it => SqlFunc.Between(it.RecognitionTime, StartDateTime, EndDateTime)).ToList();
+            // 生成统计结果
+            List<StatisticsDataModel> statistics = GenerateStatistics(productionList);
+
+            // 输出结果
+            foreach (var stat in statistics)
+            {
+                Console.WriteLine($"序号: {stat.Index}, 轮型: {stat.Model}, 样式: {stat.WheelStyle}, " +
+                                  $"数量: {stat.WheelCount}, 合格数: {stat.PassCount}, 主要NG: {stat.MostOfNG}");
+            }
+            StatisticsDatas?.Clear();
+            StatisticsDatas = new ObservableCollection<StatisticsDataModel>(statistics);
+            StatisticsDataVisibility = Visibility.Visible;
+            //EventMessage.SystemMessageDisplay("数据统计完成", MessageType.Success);
+
+
             //else
             //    EventMessage.SystemMessageDisplay(result.Result, MessageType.Warning);
         }
@@ -426,11 +427,11 @@ namespace SQLManage.ViewModels
             {
                 // 每次循环写入一行数据
 
-                int matchRow = 760;
+                int matchRow = 802;
                 int macthStartCol = 1;
                 int macthEndCol = 1;
                 string matchName = "班次";
-                int setRow = 765 + appendIndex;
+                int setRow = 807 + appendIndex;
                 object setValue = workShift;
                 //班次
                 exportDatas.Enqueue(new ExportDataModel()
@@ -446,11 +447,11 @@ namespace SQLManage.ViewModels
 
 
                 //轮形
-                matchRow = 760;
+                matchRow = 802;
                 macthStartCol = 3;
                 macthEndCol = 3;
                 matchName = "轮型";
-                setRow = 765 + appendIndex;
+                setRow = 807 + appendIndex;
                 setValue = modelSummary.Model;
 
                 exportDatas.Enqueue(new ExportDataModel()
@@ -480,7 +481,7 @@ namespace SQLManage.ViewModels
                     {
 
                         //OK量
-                        matchRow = 760;
+                        matchRow = 802;
                         matchName = "成品量";
 
                         macthStartCol = 5;
@@ -505,7 +506,7 @@ namespace SQLManage.ViewModels
                             Console.WriteLine($"  │   ├─ [报告方式] {reportWayGroup.ReportWay} (数量: {reportWayGroup.Count})");
 
                             string result = remarkGroup.Remark.PadLeft(2, '0');
-                            matchRow = 763;
+                            matchRow = 805;
                             matchName = $"5{result}";
                             if (reportWayGroup.ReportWay == "线上")
                             {
@@ -535,7 +536,7 @@ namespace SQLManage.ViewModels
 
                     }
 
-                    setRow = 765 + appendIndex;  //行增加
+                    setRow = 807 + appendIndex;  //行增加
 
 
 
@@ -547,12 +548,72 @@ namespace SQLManage.ViewModels
             ExcelHelper excelHelper = new ExcelHelper();
             string subDir = $"D:\\数据导出\\";
             string targetDir = $"{subDir}{style}\\";
-            excelHelper.ModifyExcelFile(exportDatas, "D:\\ZS\\数据导出.xlsx", targetDir);
+            if (style == "半成品")
+            {
+                string path = CopyFileWithDateName("D:\\ZS\\半成品模板.xlsx", targetDir);
+
+                excelHelper.ModifyExcelFile(exportDatas, "D:\\ZS\\半成品模板.xlsx", path);
+
+            }
+            if (style == "成品")
+            {
+                string path = CopyFileWithDateName("D:\\ZS\\成品模板.xlsx", targetDir);
+                excelHelper.ModifyExcelFile(exportDatas, "D:\\ZS\\成品模板.xlsx", path);
+
+            }
+
+
             exportDatas.Clear();
             exportDatas = null;
             return subDir;
         }
 
+        public string CopyFileWithDateName(string sourceFile, string targetDir)
+        {
+
+            // 1. 校验源文件是否存在
+            if (!File.Exists(sourceFile))
+                throw new FileNotFoundException("源文件不存在: " + sourceFile);
+
+            // 2. 创建目标文件夹（若不存在）
+            Directory.CreateDirectory(targetDir);
+            // DateTime.Now.ToString("yyyyMMdd HH-mm-ss")
+            string dateStr = "";
+            // 3. 生成新文件名（格式：年月日）
+            if (StartDateTime != null)
+            {
+                dateStr = $"{StartDateTime?.ToString("yyyyMMdd HH-mm-ss")}";
+            }
+            if (EndDateTime != null)
+            {
+                dateStr = $"{dateStr}到{EndDateTime?.ToString("yyyyMMdd HH-mm-ss")}";
+            }
+            string style = string.Empty;
+            if (sourceFile.Contains("半成品"))
+            {
+                style = "半成品";
+
+            }
+            else
+            {
+                style = "成品";
+            }
+            dateStr = $"{dateStr}({style}-{DateTime.Now.ToString("HH-mm-ss")})"; // 格式示例：20250618[3,7](@ref)
+
+
+            string originalName = Path.GetFileNameWithoutExtension(sourceFile);
+            string extension = Path.GetExtension(sourceFile);
+
+            string newFileName = $"{dateStr}{extension}"; // 保留原名+日期后缀[3](@ref)
+            string destPath = Path.Combine(targetDir, newFileName);
+
+            // 4. 执行复制（覆盖同名文件）
+            File.Copy(sourceFile, destPath, true); // true 表示覆盖[9,10](@ref)
+            Console.WriteLine($"文件已复制并重命名：{destPath}");
+            return destPath;
+
+
+        }
 
 
         /// <summary>
