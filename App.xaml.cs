@@ -13,6 +13,7 @@ using Unity;
 using Prism;
 using SQLManage.Views;
 using System.Runtime.InteropServices;
+using MahApps.Metro.Controls.Dialogs;
 
 namespace SQLManage
 {
@@ -79,6 +80,8 @@ namespace SQLManage
         protected override void RegisterTypes(IContainerRegistry containerRegistry)
         {
             containerRegistry.RegisterForNavigation<ReportManagementView>();
+
+            containerRegistry.RegisterInstance<IDialogCoordinator>(DialogCoordinator.Instance);
 
         }
 

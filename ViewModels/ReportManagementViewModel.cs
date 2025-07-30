@@ -12,6 +12,7 @@ using SQLManage.Models;
 using SQLManage.Util;
 using SqlSugar;
 using System.IO;
+using MahApps.Metro.Controls.Dialogs;
 
 namespace SQLManage.ViewModels
 {
@@ -114,9 +115,12 @@ namespace SQLManage.ViewModels
             set { SetProperty(ref _statisticsDataVisibility, value); }
         }
 
+        private readonly IDialogCoordinator _dialogCoordinator;
 
-        public ReportManagementViewModel()
+        public ReportManagementViewModel(IDialogCoordinator dialogCoordinator)
         {
+            this._dialogCoordinator = dialogCoordinator;
+
             StartDateTime = DateTime.Now.AddHours(-8);
             EndDateTime = DateTime.Now;
 
@@ -300,6 +304,10 @@ namespace SQLManage.ViewModels
                 workShift = "晚";
             }
             string path = string.Empty;
+            var controller = await this._dialogCoordinator.ShowProgressAsync(this, "数据导出", "数据导出到本地中");
+            controller.SetIndeterminate();
+
+            //await Task.Delay(3000);       
             await Task.Run(() =>
             {
 
@@ -307,33 +315,14 @@ namespace SQLManage.ViewModels
 
                 ExportProducts("半成品", list, workShift);
                 path = ExportProducts("成品", list, workShift);
-
-
-                //PrintSummaryResults(summaryResults);
-
             });
-
+            await controller.CloseAsync();
             Console.WriteLine($"数据导出完成");
             //EventMessage.SystemMessageDisplay("数据导出完成", MessageType.Success);
             await Task.Delay(500);
             Process.Start("explorer.exe", path);
 
-            //SaveFileDialog saveFileDialog = new SaveFileDialog
-            //{
-            //    Title = "请选择要导出的位置",
-            //    Filter = "Excel文件(*.xls,*.xlsx)|*.xls;*.xlsx"
-            //};
-            //if (saveFileDialog.ShowDialog() != true) return;
-            //if (saveFileDialog.FileName != "")
-            //{
-            //    var FileSavePath = saveFileDialog.FileName.ToString();
-            //    DataTable datas = new DataTable();
-            //    if (IdentificationDatas.Count > 0) datas = ExcelDataAccess.ListToDataTable(IdentificationDatas);
-            //    else if (StatisticsDatas.Count > 0) datas = ExcelDataAccess.ListToDataTable(StatisticsDatas);
-            //    var result = ExcelDataAccess.DataTableToExcel(datas, FileSavePath, out string exportResult);
-            //    if (result) EventMessage.SystemMessageDisplay(exportResult, MessageType.Success);
-            //    else EventMessage.SystemMessageDisplay(exportResult, MessageType.Error);
-            //}
+           
         }
 
 
@@ -426,12 +415,13 @@ namespace SQLManage.ViewModels
             foreach (var modelSummary in summaryResults)
             {
                 // 每次循环写入一行数据
+                int setRow = 807 + appendIndex;
 
                 int matchRow = 802;
-                int macthStartCol = 1;
-                int macthEndCol = 1;
+                int macthStartCol = 1,macthEndCol = 1;
+                
                 string matchName = "班次";
-                int setRow = 807 + appendIndex;
+               
                 object setValue = workShift;
                 //班次
                 exportDatas.Enqueue(new ExportDataModel()
@@ -448,10 +438,10 @@ namespace SQLManage.ViewModels
 
                 //轮形
                 matchRow = 802;
-                macthStartCol = 3;
-                macthEndCol = 3;
+                macthStartCol = macthEndCol  = 3;
+                
                 matchName = "轮型";
-                setRow = 807 + appendIndex;
+                //setRow = 807 + appendIndex;
                 setValue = modelSummary.Model;
 
                 exportDatas.Enqueue(new ExportDataModel()
@@ -484,8 +474,8 @@ namespace SQLManage.ViewModels
                         matchRow = 802;
                         matchName = "成品量";
 
-                        macthStartCol = 5;
-                        macthEndCol = 5;
+                        macthStartCol = macthEndCol = 5;
+                      
                         setValue = remarkGroup.Count;
 
                         exportDatas.Enqueue(new ExportDataModel()
@@ -508,6 +498,7 @@ namespace SQLManage.ViewModels
                             string result = remarkGroup.Remark.PadLeft(2, '0');
                             matchRow = 805;
                             matchName = $"5{result}";
+
                             if (reportWayGroup.ReportWay == "线上")
                             {
                                 macthStartCol = 24; //X
@@ -536,7 +527,7 @@ namespace SQLManage.ViewModels
 
                     }
 
-                    setRow = 807 + appendIndex;  //行增加
+                    //setRow = 807 + appendIndex;  //行增加
 
 
 
