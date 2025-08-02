@@ -8,7 +8,7 @@
              xmlns:util="clr-namespace:SQLManage.Util"          
              xmlns:p="http://prismlibrary.com/" 
              mc:Ignorable="d" 
-             d:DesignHeight="640" d:DesignWidth="1280">
+             d:DesignHeight="840" d:DesignWidth="1280">
     <UserControl.Resources>
         <ResourceDictionary>
             <Style x:Key="DatePickerStyle" TargetType="{x:Type DatePicker}">
@@ -232,9 +232,10 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="320"/>
-                        <RowDefinition/>
+                        <RowDefinition Height ="320"/>
+                        <RowDefinition />
                     </Grid.RowDefinitions>
-                    <GroupBox  Header="报表管理" Margin="2" >
+                    <GroupBox  Header="报表查询导出" Margin="2" >
                         <Grid Margin="2,5,2,2">
                             <Grid>
                                 <Grid.RowDefinitions>
@@ -304,6 +305,32 @@
                                         Command="{Binding DataExportExcelCommand}"/>
                                 </Grid>
                             </Grid>
+                        </Grid>
+                    </GroupBox>
+                    <GroupBox  Header="数据纠正" Grid.Row="1" Margin="2" >
+                        <Grid Margin="2,5,2,2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="60"/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Vertical" Grid.Row="0">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment ="Left" >
+                                    <TextBlock Text="数据修正指定日期" FontSize="20" Margin="5,0,0,0" Foreground="#444"/>
+                                    <ComboBox Margin="10,0,0,0" Width="240"
+                                              mah:TextBoxHelper.ClearTextButton="True"
+                                              ItemsSource="{Binding Items}"
+                                              SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                                              ></ComboBox>
+                                    <Button Margin="5,0,0,0" Content="确定" Width="38" Command="{Binding UpdataRecordCommand}"></Button>
+                                </StackPanel>
+                                <TextBlock Text="{Binding SelectPath}" Margin="5,0,0,0" FontSize="12" Grid.Row="1" Foreground="#AAA"/>
+                                <mah:MetroProgressBar IsIndeterminate="True"
+                                                      Visibility ="{Binding ProgreVisibility}"></mah:MetroProgressBar>
+                            </StackPanel>
                         </Grid>
                     </GroupBox>
                 </Grid>

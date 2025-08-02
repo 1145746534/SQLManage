@@ -13,6 +13,8 @@ using SQLManage.Util;
 using SqlSugar;
 using System.IO;
 using MahApps.Metro.Controls.Dialogs;
+using System.Threading;
+using System.Globalization;
 
 namespace SQLManage.ViewModels
 {
@@ -20,7 +22,7 @@ namespace SQLManage.ViewModels
     {
         public string Title { get; set; } = "报表管理";
 
-        #region==============日期时间相关属性================
+        #region==============属性================
 
 
         private DateTime? _startDateTime;
@@ -49,31 +51,6 @@ namespace SQLManage.ViewModels
                 SetProperty(ref _endDateTime, value);
             }
         }
-
-        #endregion
-        #region==============按钮命令相关属性================
-        /// <summary>
-        /// 数据刷新命令
-        /// </summary>
-        public DelegateCommand DataRefreshCommand { get; set; }
-        /// <summary>
-        /// 数据查询命令
-        /// </summary>
-        public DelegateCommand DataInquireCommand { get; set; }
-        /// <summary>
-        /// 数据统计命令
-        /// </summary>
-        public DelegateCommand DataStatisticsCommand { get; set; }
-        /// <summary>
-        /// 数据导出命令
-        /// </summary>
-        public DelegateCommand DataExportCommand { get; set; }
-
-        /// <summary>
-        /// 上一个班次数据导出
-        /// </summary>
-        public DelegateCommand DataExportExcelCommand { get; set; }
-        #endregion
 
         private ObservableCollection<Tbl_productiondatamodel> _identificationDatas;
         /// <summary>
@@ -115,6 +92,94 @@ namespace SQLManage.ViewModels
             set { SetProperty(ref _statisticsDataVisibility, value); }
         }
 
+        private ObservableCollection<string> _items;
+        public ObservableCollection<string> Items
+        {
+            get => _items;
+            set
+            {
+                SetProperty(ref _items, value);
+            }
+        }
+
+        private string _selectedItem;
+        public string SelectedItem
+        {
+            get => _selectedItem;
+            set
+            {
+                if (value == null)
+                {
+                    SelectPath = null;
+                }
+                if (result.ContainsKey(value))
+                {
+                    SelectPath = result[value];
+                }
+
+                SetProperty(ref _selectedItem, value);
+            }
+        }
+
+        private string _selectPath;
+        public string SelectPath
+        {
+            get => _selectPath;
+            set
+            {
+                SetProperty(ref _selectPath, value);
+            }
+        }
+
+        private Visibility _progreVisibility;
+        public Visibility ProgreVisibility
+        {
+            get => _progreVisibility;
+            set
+            {
+                SetProperty(ref _progreVisibility, value);
+            }
+        }
+
+
+
+
+        #endregion
+        #region==============命令================
+        /// <summary>
+        /// 数据刷新命令
+        /// </summary>
+        public DelegateCommand DataRefreshCommand { get; set; }
+        /// <summary>
+        /// 数据查询命令
+        /// </summary>
+        public DelegateCommand DataInquireCommand { get; set; }
+        /// <summary>
+        /// 数据统计命令
+        /// </summary>
+        public DelegateCommand DataStatisticsCommand { get; set; }
+        /// <summary>
+        /// 数据导出命令
+        /// </summary>
+        public DelegateCommand DataExportCommand { get; set; }
+
+        /// <summary>
+        /// 上一个班次数据导出
+        /// </summary>
+        public DelegateCommand DataExportExcelCommand { get; set; }
+        /// <summary>
+        /// 修改数据库
+        /// </summary>
+        public DelegateCommand UpdataRecordCommand { get; set; }
+        #endregion
+
+        private Dictionary<string, string> result;
+        private readonly string _rootPath = @"D:\VisualDatas\HistoricalImages";
+
+        private Timer _timer;
+        //private Action<Dictionary<string, string>> _updateAction;
+
+
         private readonly IDialogCoordinator _dialogCoordinator;
 
         public ReportManagementViewModel(IDialogCoordinator dialogCoordinator)
@@ -129,10 +194,146 @@ namespace SQLManage.ViewModels
             DataStatisticsCommand = new DelegateCommand(DataStatistics);
             DataExportCommand = new DelegateCommand(DataExportAsync);
             DataExportExcelCommand = new DelegateCommand(DataExportExcel);
+            UpdataRecordCommand = new DelegateCommand(UpdataRecord);
 
             IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>();
             StatisticsDatas = new ObservableCollection<StatisticsDataModel>();
+
+            ProgreVisibility = Visibility.Hidden;
+            Start();
         }
+
+        /// <summary>
+        /// 更新数据
+        /// </summary>
+        private void UpdataRecord()
+        {
+            if (SelectPath != null)
+            {
+                Console.WriteLine($"UpdataRecord");
+                ProgreVisibility = Visibility.Visible;
+                string[] subDirectories = Directory.GetDirectories(SelectPath);
+
+                foreach (string subDir in subDirectories)
+                {
+                    // 获取子目录名称（不带路径）
+                    string folderName = Path.GetFileName(subDir); //
+                    string model = string.Empty;
+                    string style = string.Empty;
+                    Console.WriteLine($"\n处理子目录: {folderName}");
+                    string[] strs = null;
+                    if (folderName.Contains('_'))
+                    {
+                        strs = folderName.Split('_');
+                    }
+                    if (folderName.Contains('-'))
+                    {
+                        strs = folderName.Split('-');
+                    }
+                    if (strs == null || strs.Length != 2)
+                    {
+                        continue;
+                    }
+                    model = strs[0].ToUpper();
+                    style = strs[1].Contains("半") ? "半成品" : "成品";
+
+                    // 获取目录下所有文件
+                    var files = Directory.GetFiles(subDir);
+                    if (files.Length == 0)
+                    {
+                        Console.WriteLine("  -- 没有找到文件");
+                        continue;
+                    }
+                    //  处理每个文件
+                    foreach (string filePath in files)
+                    {
+                        // 获取文件名和扩展名
+                        string fileName = Path.GetFileName(filePath);
+                        bool isTrue = fileName.StartsWith(model); //分类是否准确
+                        if (!isTrue)
+                        {
+                            //需要调整数据
+                            UpdateModelByImageFileName(fileName, filePath, model, style);
+                        }
+                    }
+
+
+                }
+                ProgreVisibility = Visibility.Hidden;
+            }
+
+
+        }
+
+        public DateTime ConvertToDateTime(string compactTime)
+        {
+            if (string.IsNullOrWhiteSpace(compactTime) || compactTime.Length != 12)
+            {
+                throw new ArgumentException("时间格式必须为12位数字: yyMMddHHmmss");
+            }
+
+            return DateTime.ParseExact(
+                compactTime,
+                "yyMMddHHmmss",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None
+            );
+        }
+
+
+        public void UpdateModelByImageFileName(string fileName, string newImagePath, string newModelName, string style)
+        {
+            try
+            {
+                //先把文件名解析
+                string[] strings = fileName.Split('&');
+                if (strings.Length != 2)
+                {
+                    return;
+                }
+                string compactTime = strings[1].Split('.')[0];
+
+                DateTime result = ConvertToDateTime(compactTime);
+                Console.WriteLine(result.ToString("yyyy-MM-dd HH:mm:ss"));
+                DateTime startTime = result.AddMinutes(30);
+                DateTime endTime = result.AddMinutes(-30);
+
+
+                using (SqlSugarClient db = new SqlAccess().SystemDataAccess)
+                {
+                    var record = db.Queryable<Tbl_productiondatamodel>()
+                                .Where(t => t.RecognitionTime > startTime && t.RecognitionTime < endTime)
+                                .Where(t => t.ImagePath != null && t.ImagePath.Contains(fileName))
+                                .First();
+                    //// 查询包含指定文件名的记录
+                    //var record = db.Queryable<Tbl_productiondatamodel>()
+                    //    .Where(t => t.ImagePath.Contains(fileName))
+                    //    .Where(t => t.RecognitionTime > startTime && t.RecognitionTime<endTime).Take(1).First();
+
+                    if (record != null)
+                    {
+                        // 更新Model字段
+                        record.Model = newModelName;
+                        record.ImagePath = newImagePath;
+                        record.WheelStyle = style;
+
+                        // 更新数据库记录
+                        db.Updateable(record)
+                          .Where(t => t.ID == record.ID) // 确保使用主键定位记录
+                          .ExecuteCommand();
+                    }
+                    else
+                    {
+                        // 可选：处理未找到记录的情况
+                        //throw new Exception($"未找到包含文件名的记录: {fileName}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+            }
+        }
+
         private void DataRefresh()
         {
 
@@ -322,7 +523,7 @@ namespace SQLManage.ViewModels
             await Task.Delay(500);
             Process.Start("explorer.exe", path);
 
-           
+
         }
 
 
@@ -339,11 +540,14 @@ namespace SQLManage.ViewModels
         {
             //1.查询上一个班次的数据
             DateTime now = DateTime.Now;
+
             DateTime today = now.Date;
             DateTime today8 = today.AddHours(8);
             DateTime today20 = today.AddHours(20);
+
             string workShift = string.Empty;
             DateTime lastShiftStart, lastShiftEnd;
+
             if (now >= today8 && now < today20)
             {
                 // 当前是A班
@@ -369,7 +573,8 @@ namespace SQLManage.ViewModels
                 }
             }
 
-
+            StartDateTime = lastShiftStart;
+            EndDateTime = lastShiftEnd;
             await Task.Run(() =>
             {
 
@@ -418,10 +623,10 @@ namespace SQLManage.ViewModels
                 int setRow = 807 + appendIndex;
 
                 int matchRow = 802;
-                int macthStartCol = 1,macthEndCol = 1;
-                
+                int macthStartCol = 1, macthEndCol = 1;
+
                 string matchName = "班次";
-               
+
                 object setValue = workShift;
                 //班次
                 exportDatas.Enqueue(new ExportDataModel()
@@ -438,8 +643,8 @@ namespace SQLManage.ViewModels
 
                 //轮形
                 matchRow = 802;
-                macthStartCol = macthEndCol  = 3;
-                
+                macthStartCol = macthEndCol = 3;
+
                 matchName = "轮型";
                 //setRow = 807 + appendIndex;
                 setValue = modelSummary.Model;
@@ -475,7 +680,7 @@ namespace SQLManage.ViewModels
                         matchName = "成品量";
 
                         macthStartCol = macthEndCol = 5;
-                      
+
                         setValue = remarkGroup.Count;
 
                         exportDatas.Enqueue(new ExportDataModel()
@@ -608,7 +813,7 @@ namespace SQLManage.ViewModels
 
 
         /// <summary>
-        /// 双层分组统计（带汇总信息）
+        /// 分组统计（带汇总信息）
         /// </summary>
         public List<ModelGroupSummary> GroupByModelThenRemarkWithSummary(
             List<Tbl_productiondatamodel> dataList)
@@ -644,97 +849,63 @@ namespace SQLManage.ViewModels
                 .ToList();
         }
 
-        private static void PrintSummaryResults(List<ModelGroupSummary> summaries)
+
+        public void Start()
         {
-            //每一个单元格都需要往队列里面添数据
-            Queue<ExportDataModel> exportDatas = new Queue<ExportDataModel>();
-            foreach (var modelSummary in summaries)
+            // 立即执行一次扫描
+            ScanAndUpdate();
+
+            // 设置每天定时执行
+            ResetTimer();
+        }
+        private void ResetTimer()
+        {
+            // 停止现有定时器
+            _timer?.Dispose();
+
+            // 计算到第二天凌晨的时间
+            var now = DateTime.Now;
+            var nextRun = now.Date.AddDays(1); // 明天凌晨
+            var initialDelay = nextRun - now;
+
+            // 创建新定时器
+            _timer = new Timer(_ =>
             {
-                int matchRow = 760;
-                string matchName = "班次";
-                int setRow = 765;
-                string setValue = "";
-                Console.WriteLine($"型号: {modelSummary.Model}");
-                Console.WriteLine($"  总记录数: {modelSummary.TotalCount}");
-
-
-                foreach (var remarkGroup in modelSummary.RemarkGroups)
+                // 在UI线程执行更新
+                Application.Current.Dispatcher.Invoke(() =>
                 {
-                    double percentage = (double)remarkGroup.Count / modelSummary.TotalCount * 100;
-                    Console.WriteLine($"    - 备注: {remarkGroup.Remark}, 数量: {remarkGroup.Count} ({percentage:F1}%)");
-
+                    ScanAndUpdate();
+                    ResetTimer(); // 重新设置定时器
+                });
+            }, null, initialDelay, Timeout.InfiniteTimeSpan);
+        }
+        private void ScanAndUpdate()
+        {
+            try
+            {
+                result = DirectoryScanner.ScanDirectories(_rootPath);
+                foreach (KeyValuePair<string, string> item in result)
+                {
+                    Console.WriteLine($"键：{item.Key} - 值：{item.Value}");
                 }
-
-                Console.WriteLine("----------------------------------");
+                UpdateComboxItems(result);
+            }
+            catch (Exception ex)
+            {
+                // 处理错误，例如记录日志
+                Console.WriteLine($"扫描失败: {ex.Message}");
             }
         }
 
-        /// <summary>
-        /// 检查输入的日期时间
-        /// </summary>
-        /// <param name="startDate">起始日期</param>
-        /// <param name="startHour">起始小时</param>
-        /// <param name="startMinute">起始分钟</param>
-        /// <param name="endDate">结束日期</param>
-        /// <param name="endHour">结束小时</param>
-        /// <param name="endMinute">结束分钟</param>
-        /// <param name="result">检查结果</param>
-        /// <returns>True为无错误</returns>
-        private bool JudgmentInputsDateTime(DateTime startDate, string startHour, string startMinute, DateTime endDate, string endHour, string endMinute, out GetDateTimeModel result)
+        private void UpdateComboxItems(Dictionary<string, string> result)
         {
-            GetDateTimeModel dateTime = new GetDateTimeModel();
-            if (!int.TryParse(startHour, out int sh) || sh < 0 || sh > 24)
+            Items?.Clear();
+            Items = new ObservableCollection<string>();
+            foreach (KeyValuePair<string, string> item in result)
             {
-                dateTime.Result = "起始小时输入错误，请检查！";
-                result = dateTime;
-                return false;
+                Items.Add(item.Key);
             }
-            if (!int.TryParse(startMinute, out int sm) || sm < 0 || sm > 59)
-            {
-                dateTime.Result = "起始分钟输入错误，请检查！";
-                result = dateTime;
-                return false;
-            }
-            if (!int.TryParse(endHour, out int eh) || eh < 0 || eh > 24)
-            {
-                dateTime.Result = "结束小时输入错误，请检查！";
-                result = dateTime;
-                return false;
-            }
-            if (!int.TryParse(endMinute, out int em) || em < 0 || em > 59)
-            {
-                dateTime.Result = "结束分钟输入错误，请检查！";
-                result = dateTime;
-                return false;
-            }
-            GenDateTime(startDate, startHour, startMinute, out DateTime startDateTime);
-            GenDateTime(endDate, endHour, endMinute, out DateTime endDateTime);
-            if (startDateTime >= endDateTime)
-            {
-                dateTime.Result = "起始日期大于或等于结束日期，请检查！";
-                result = dateTime;
-                return false;
-            }
-            dateTime.StartDateTime = startDateTime;
-            dateTime.EndDateTime = endDateTime;
-            dateTime.Result = "OK";
-            result = dateTime;
-            return true;
-        }
 
-        /// <summary>
-        /// 生成日期时间
-        /// </summary>
-        /// <param name="date">日期</param>
-        /// <param name="hour">小时</param>
-        /// <param name="minute">分钟</param>
-        /// <param name="dateTime">生成的日期时间</param>
-        /// <returns>True为生成成功</returns>
-        private bool GenDateTime(DateTime date, string hour, string minute, out DateTime dateTime)
-        {
-            string strDate = date.ToString().Replace("0:00:00", "");
-            string strDateTime = strDate + hour + ":" + minute + ":00";
-            return DateTime.TryParse(strDateTime, out dateTime);
         }
     }
     public class ModelGroupSummary
