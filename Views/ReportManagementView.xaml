@@ -8,6 +8,7 @@
              xmlns:util="clr-namespace:SQLManage.Util"          
              xmlns:p="http://prismlibrary.com/" 
              mc:Ignorable="d" 
+             mah:DialogParticipation.Register="{Binding}"
              d:DesignHeight="840" d:DesignWidth="1280">
     <UserControl.Resources>
         <ResourceDictionary>
@@ -170,7 +171,7 @@
             </Style>
             <util:ResultConverter x:Key="ResultConverter" />
         </ResourceDictionary>
-        
+
     </UserControl.Resources>
     <Border CornerRadius="5">
         <Border.Background>
@@ -208,8 +209,8 @@
                                         <TextBlock Text="{Binding Remark, Converter={StaticResource ResultConverter}}"  />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                                <DataGridTextColumn Header="上报方式" Binding="{Binding ReportWay}" Width="0.1*"  />
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="上报方式" Binding="{Binding ReportWay}" Width="0.1*"  />
                             <DataGridTextColumn Header="相似度" Binding="{Binding Similarity}" Width="0.1*"  />
                             <DataGridTextColumn Header="识别时间" Binding="{Binding RecognitionTime, StringFormat={}{0:yyyy/MM/dd HH:mm:ss}}" Width="0.2*" />
                         </DataGrid.Columns>
@@ -231,15 +232,15 @@
             <Border Grid.Column="1">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="320"/>
-                        <RowDefinition Height ="320"/>
+                        <RowDefinition Height="260"/>
+                        <RowDefinition Height ="100"/>
+                        <RowDefinition Height ="300"/>
                         <RowDefinition />
                     </Grid.RowDefinitions>
                     <GroupBox  Header="报表查询导出" Margin="2" >
                         <Grid Margin="2,5,2,2">
                             <Grid>
                                 <Grid.RowDefinitions>
-                                    <RowDefinition/>
                                     <RowDefinition/>
                                     <RowDefinition/>
                                     <RowDefinition/>
@@ -311,15 +312,10 @@
                         <Grid Margin="2,5,2,2">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="60"/>
-                                <RowDefinition/>
-                                <RowDefinition/>
-                                <RowDefinition/>
-                                <RowDefinition/>
-                                
                             </Grid.RowDefinitions>
                             <StackPanel Orientation="Vertical" Grid.Row="0">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment ="Left" >
-                                    <TextBlock Text="数据修正指定日期" FontSize="20" Margin="5,0,0,0" Foreground="#444"/>
+                                    <TextBlock Text="数据修正指定目录" FontSize="20" Margin="5,0,0,0" Foreground="#444"/>
                                     <ComboBox Margin="10,0,0,0" Width="240"
                                               mah:TextBoxHelper.ClearTextButton="True"
                                               ItemsSource="{Binding Items}"
@@ -330,6 +326,29 @@
                                 <TextBlock Text="{Binding SelectPath}" Margin="5,0,0,0" FontSize="12" Grid.Row="1" Foreground="#AAA"/>
                                 <mah:MetroProgressBar IsIndeterminate="True"
                                                       Visibility ="{Binding ProgreVisibility}"></mah:MetroProgressBar>
+                            </StackPanel>
+                        </Grid>
+                    </GroupBox>
+                    <GroupBox  Header="图片挑选" Grid.Row="2" Margin="2" >
+                        <Grid Margin="2,5,2,2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="60"/>
+                                <RowDefinition Height="60"/>
+                                <RowDefinition Height="60"/>
+                                <RowDefinition Height="60"/>
+                            </Grid.RowDefinitions>
+                            <StackPanel Orientation="Vertical" Grid.Row="0">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment ="Left" >
+                                    <TextBlock Text="文件挑选源文件" FontSize="20" Margin="5,0,0,0" Foreground="#444"/>
+                                    <ComboBox Margin="10,0,0,0" Width="240"
+                                              mah:TextBoxHelper.ClearTextButton="True"
+                                              ItemsSource="{Binding Items}"
+                                              SelectedItem="{Binding PickSelectedItem, Mode=TwoWay}"/>
+                                    <Button Margin="5,0,0,0" Content="确定" Width="38" Command="{Binding PickFileCommand}"></Button>
+                                </StackPanel>
+                                <TextBlock Text="{Binding PickSelectPath}" Margin="5,0,0,0" FontSize="12" Grid.Row="1" Foreground="#AAA"/>
+                                <mah:MetroProgressBar IsIndeterminate="True"
+                                        Visibility ="{Binding PickProgreVisibility}"></mah:MetroProgressBar>
                             </StackPanel>
                         </Grid>
                     </GroupBox>

@@ -93,6 +93,9 @@ namespace SQLManage.ViewModels
         }
 
         private ObservableCollection<string> _items;
+        /// <summary>
+        /// 下拉文件框
+        /// </summary>
         public ObservableCollection<string> Items
         {
             get => _items;
@@ -141,7 +144,44 @@ namespace SQLManage.ViewModels
             }
         }
 
+        private string _pickselectedItem;
+        public string PickSelectedItem
+        {
+            get => _pickselectedItem;
+            set
+            {
+                if (value == null)
+                {
+                    PickSelectPath = null;
+                }
+                if (result.ContainsKey(value))
+                {
+                    PickSelectPath = result[value];
+                }
 
+                SetProperty(ref _pickselectedItem, value);
+            }
+        }
+
+        private string _pickselectPath;
+        public string PickSelectPath
+        {
+            get => _pickselectPath;
+            set
+            {
+                SetProperty(ref _pickselectPath, value);
+            }
+        }
+
+        private Visibility _pickprogreVisibility;
+        public Visibility PickProgreVisibility
+        {
+            get => _pickprogreVisibility;
+            set
+            {
+                SetProperty(ref _pickprogreVisibility, value);
+            }
+        }
 
 
         #endregion
@@ -171,6 +211,10 @@ namespace SQLManage.ViewModels
         /// 修改数据库
         /// </summary>
         public DelegateCommand UpdataRecordCommand { get; set; }
+        /// <summary>
+        /// 文件挑选
+        /// </summary>
+        public DelegateCommand PickFileCommand { get; set; }
         #endregion
 
         private Dictionary<string, string> result;
@@ -195,6 +239,7 @@ namespace SQLManage.ViewModels
             DataExportCommand = new DelegateCommand(DataExportAsync);
             DataExportExcelCommand = new DelegateCommand(DataExportExcel);
             UpdataRecordCommand = new DelegateCommand(UpdataRecord);
+            PickFileCommand = new DelegateCommand(PickFile);
 
             IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>();
             StatisticsDatas = new ObservableCollection<StatisticsDataModel>();
@@ -202,6 +247,8 @@ namespace SQLManage.ViewModels
             ProgreVisibility = Visibility.Hidden;
             Start();
         }
+
+        
 
         /// <summary>
         /// 更新数据
@@ -263,6 +310,15 @@ namespace SQLManage.ViewModels
             }
 
 
+        }
+
+        /// <summary>
+        /// 挑选文件
+        /// </summary>
+        /// <exception cref="NotImplementedException"></exception>
+        private void PickFile()
+        {
+            
         }
 
         public DateTime ConvertToDateTime(string compactTime)
@@ -388,9 +444,9 @@ namespace SQLManage.ViewModels
 
             StatisticsDataVisibility = Visibility.Collapsed;
             var pDB = new SqlAccess().SystemDataAccess;
-            var productionList = pDB.Queryable<Tbl_productiondatamodel>().
-                Where(it => SqlFunc.Between(it.RecognitionTime, StartDateTime, EndDateTime)).
-                OrderBy((sc) => sc.ID, OrderByType.Desc).ToList();
+            var productionList = pDB.Queryable<Tbl_productiondatamodel>()
+                .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime)
+                .OrderBy((sc) => sc.ID, OrderByType.Desc).ToList();
             IdentificationDatas?.Clear();
             IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>(productionList);
             IdentificationDataVisibility = Visibility.Visible;
@@ -417,7 +473,9 @@ namespace SQLManage.ViewModels
             IdentificationDataVisibility = Visibility.Hidden;
             var pDB = new SqlAccess().SystemDataAccess;
             // 从数据库读取的数据
-            var productionList = pDB.Queryable<Tbl_productiondatamodel>().Where(it => SqlFunc.Between(it.RecognitionTime, StartDateTime, EndDateTime)).ToList();
+            var productionList = pDB.Queryable<Tbl_productiondatamodel>()
+                                                        .Where(it => it.RecognitionTime > StartDateTime &&it.RecognitionTime <= EndDateTime)
+                                                        .ToList();
             // 生成统计结果
             List<StatisticsDataModel> statistics = GenerateStatistics(productionList);
 
