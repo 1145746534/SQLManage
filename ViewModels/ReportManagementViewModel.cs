@@ -299,7 +299,7 @@ namespace SQLManage.ViewModels
                         {
                             // 获取文件名和扩展名
                             string fileName = Path.GetFileName(filePath);
-                            bool isTrue = fileName.StartsWith(model); //分类是否准确
+                            bool isTrue = fileName.StartsWith(model) && fileName.Contains(strs[1]); //分类是否准确
                             if (!isTrue)
                             {
                                 sum++;
