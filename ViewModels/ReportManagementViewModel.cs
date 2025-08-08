@@ -253,60 +253,69 @@ namespace SQLManage.ViewModels
         /// <summary>
         /// 更新数据
         /// </summary>
-        private void UpdataRecord()
+        private async void UpdataRecord()
         {
             if (SelectPath != null)
             {
                 Console.WriteLine($"UpdataRecord");
                 ProgreVisibility = Visibility.Visible;
-                string[] subDirectories = Directory.GetDirectories(SelectPath);
+                await Task.Run(() => {
 
-                foreach (string subDir in subDirectories)
-                {
-                    // 获取子目录名称（不带路径）
-                    string folderName = Path.GetFileName(subDir); //
-                    string model = string.Empty;
-                    string style = string.Empty;
-                    Console.WriteLine($"\n处理子目录: {folderName}");
-                    string[] strs = null;
-                    if (folderName.Contains('_'))
-                    {
-                        strs = folderName.Split('_');
-                    }
-                    if (folderName.Contains('-'))
-                    {
-                        strs = folderName.Split('-');
-                    }
-                    if (strs == null || strs.Length != 2)
-                    {
-                        continue;
-                    }
-                    model = strs[0].ToUpper();
-                    style = strs[1].Contains("半") ? "半成品" : "成品";
+                    string[] subDirectories = Directory.GetDirectories(SelectPath);
 
-                    // 获取目录下所有文件
-                    var files = Directory.GetFiles(subDir);
-                    if (files.Length == 0)
+                    foreach (string subDir in subDirectories)
                     {
-                        Console.WriteLine("  -- 没有找到文件");
-                        continue;
-                    }
-                    //  处理每个文件
-                    foreach (string filePath in files)
-                    {
-                        // 获取文件名和扩展名
-                        string fileName = Path.GetFileName(filePath);
-                        bool isTrue = fileName.StartsWith(model); //分类是否准确
-                        if (!isTrue)
+                        // 获取子目录名称（不带路径）
+                        string folderName = Path.GetFileName(subDir); //
+                        string model = string.Empty;
+                        string style = string.Empty;
+                        
+                        string[] strs = null;
+                        if (folderName.Contains('_'))
                         {
-                            //需要调整数据
-                            UpdateModelByImageFileName(fileName, filePath, model, style);
+                            strs = folderName.Split('_');
                         }
+                        if (folderName.Contains('-'))
+                        {
+                            strs = folderName.Split('-');
+                        }
+                        if (strs == null || strs.Length != 2)
+                        {
+                            continue;
+                        }
+                        model = strs[0].ToUpper();
+                        style = strs[1].Contains("半") ? "半成品" : "成品";
+
+                        // 获取目录下所有文件
+                        var files = Directory.GetFiles(subDir);
+                        if (files.Length == 0)
+                        {
+                            Console.WriteLine("  -- 没有找到文件");
+                            continue;
+                        }
+                        int sum = 0;
+                        //  处理每个文件
+                        foreach (string filePath in files)
+                        {
+                            // 获取文件名和扩展名
+                            string fileName = Path.GetFileName(filePath);
+                            bool isTrue = fileName.StartsWith(model) && fileName.Contains(strs[1]); //分类是否准确
+                            if (!isTrue)
+                            {
+                                Task.Delay(5);
+                                sum++;
+                                //需要调整数据
+                                UpdateModelByImageFileName(fileName, filePath, model, style);
+                            }
+                        }
+
+                        Console.WriteLine($"\n处理子目录: {folderName} 总数：{files.Length}  修改数：{sum}");
                     }
 
-
-                }
+                });
+               
                 ProgreVisibility = Visibility.Hidden;
+                SelectPath = null;
             }
 
 
@@ -350,9 +359,9 @@ namespace SQLManage.ViewModels
                 string compactTime = strings[1].Split('.')[0];
 
                 DateTime result = ConvertToDateTime(compactTime);
-                Console.WriteLine(result.ToString("yyyy-MM-dd HH:mm:ss"));
-                DateTime startTime = result.AddMinutes(30);
-                DateTime endTime = result.AddMinutes(-30);
+                //Console.WriteLine(result.ToString("yyyy-MM-dd HH:mm:ss"));
+                DateTime startTime = result.AddMinutes(-10);
+                DateTime endTime = result.AddMinutes(10);
 
 
                 using (SqlSugarClient db = new SqlAccess().SystemDataAccess)
@@ -361,6 +370,11 @@ namespace SQLManage.ViewModels
                                 .Where(t => t.RecognitionTime > startTime && t.RecognitionTime < endTime)
                                 .Where(t => t.ImagePath != null && t.ImagePath.Contains(fileName))
                                 .First();
+                    //开启Sql日志输出（调试用）
+                    //db.Aop.OnLogExecuting = (sql, pars) =>
+                    //{
+                    //    Console.WriteLine("---" + sql);
+                    //};
                     //// 查询包含指定文件名的记录
                     //var record = db.Queryable<Tbl_productiondatamodel>()
                     //    .Where(t => t.ImagePath.Contains(fileName))
