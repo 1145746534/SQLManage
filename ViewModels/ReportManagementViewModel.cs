@@ -15,6 +15,7 @@ using System.IO;
 using MahApps.Metro.Controls.Dialogs;
 using System.Threading;
 using System.Globalization;
+using Org.BouncyCastle.Asn1.X509;
 
 namespace SQLManage.ViewModels
 {
@@ -245,6 +246,7 @@ namespace SQLManage.ViewModels
             StatisticsDatas = new ObservableCollection<StatisticsDataModel>();
 
             ProgreVisibility = Visibility.Hidden;
+            PickProgreVisibility = Visibility.Hidden;
             Start();
         }
 
@@ -263,24 +265,21 @@ namespace SQLManage.ViewModels
 
                 foreach (string subDir in subDirectories)
                 {
-                    // 获取子目录名称（不带路径）
-                    string folderName = Path.GetFileName(subDir); //
-                    string model = string.Empty;
-                    string style = string.Empty;
+                    string WheelPath = FileRenamer.RenameDirectory(subDir);
+                    string folderName = Path.GetFileName(WheelPath); //文件夹名称                                   
                     Console.WriteLine($"\n处理子目录: {folderName}");
                     string[] strs = null;
                     if (folderName.Contains('_'))
                     {
                         strs = folderName.Split('_');
                     }
-                    if (folderName.Contains('-'))
-                    {
-                        strs = folderName.Split('-');
-                    }
+                    
                     if (strs == null || strs.Length != 2)
                     {
                         continue;
                     }
+                    string model = string.Empty;
+                    string style = string.Empty;
                     model = strs[0].ToUpper();
                     style = strs[1].Contains("半") ? "半成品" : "成品";
 
@@ -296,7 +295,7 @@ namespace SQLManage.ViewModels
                     {
                         // 获取文件名和扩展名
                         string fileName = Path.GetFileName(filePath);
-                        bool isTrue = fileName.StartsWith(model); //分类是否准确
+                        bool isTrue = fileName.StartsWith(folderName); //分类是否准确
                         if (!isTrue)
                         {
                             //需要调整数据
@@ -309,7 +308,6 @@ namespace SQLManage.ViewModels
                 ProgreVisibility = Visibility.Hidden;
             }
 
-
         }
 
         /// <summary>
@@ -318,7 +316,16 @@ namespace SQLManage.ViewModels
         /// <exception cref="NotImplementedException"></exception>
         private void PickFile()
         {
-            
+            if (PickSelectPath != null)
+            {
+                PickProgreVisibility = Visibility.Visible;
+
+                PickProgreVisibility = Visibility.Hidden;
+            }
+            //DisplayText = $"文件正在挑选中......";
+            //var checker = new FileNameChecker();
+            //await checker.CheckAndExportFolderStructure(InputFolderPath, OutputFolderPath);
+            //DisplayText = $"文件挑选完成：{InputFolderPath} -> {OutputFolderPath}";
         }
 
         public DateTime ConvertToDateTime(string compactTime)

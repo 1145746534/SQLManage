@@ -63,6 +63,8 @@
     <Compile Include="Util\BoolToResultConverter.cs" />
     <Compile Include="Util\DirectoryScanner.cs" />
     <Compile Include="Util\ExcelHelper.cs" />
+    <Compile Include="Util\FileNameChecker.cs" />
+    <Compile Include="Util\FileRenamer.cs" />
     <Compile Include="Util\SqlAccess.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs" />
     <Compile Include="ViewModels\ReportManagementViewModel.cs" />
