@@ -255,33 +255,38 @@ namespace SQLManage.ViewModels
         /// <summary>
         /// 更新数据
         /// </summary>
-        private void UpdataRecord()
+        private async void UpdataRecord()
         {
             if (SelectPath != null)
             {
                 Console.WriteLine($"UpdataRecord");
                 ProgreVisibility = Visibility.Visible;
-                string[] subDirectories = Directory.GetDirectories(SelectPath);
+                await Task.Run(() => {
 
-                foreach (string subDir in subDirectories)
-                {
-                    string WheelPath = FileRenamer.RenameDirectory(subDir);
-                    string folderName = Path.GetFileName(WheelPath); //文件夹名称                                   
-                    Console.WriteLine($"\n处理子目录: {folderName}");
-                    string[] strs = null;
-                    if (folderName.Contains('_'))
+                    string[] subDirectories = Directory.GetDirectories(SelectPath);
+
+                    foreach (string subDir in subDirectories)
                     {
-                        strs = folderName.Split('_');
-                    }
-                    
-                    if (strs == null || strs.Length != 2)
-                    {
-                        continue;
-                    }
-                    string model = string.Empty;
-                    string style = string.Empty;
-                    model = strs[0].ToUpper();
-                    style = strs[1].Contains("半") ? "半成品" : "成品";
+                        // 获取子目录名称（不带路径）
+                        string folderName = Path.GetFileName(subDir); //
+                        string model = string.Empty;
+                        string style = string.Empty;
+                        
+                        string[] strs = null;
+                        if (folderName.Contains('_'))
+                        {
+                            strs = folderName.Split('_');
+                        }
+                        if (folderName.Contains('-'))
+                        {
+                            strs = folderName.Split('-');
+                        }
+                        if (strs == null || strs.Length != 2)
+                        {
+                            continue;
+                        }
+                        model = strs[0].ToUpper();
+                        style = strs[1].Contains("半") ? "半成品" : "成品";
 
                     // 获取目录下所有文件
                     var files = Directory.GetFiles(subDir);
@@ -295,7 +300,7 @@ namespace SQLManage.ViewModels
                     {
                         // 获取文件名和扩展名
                         string fileName = Path.GetFileName(filePath);
-                        bool isTrue = fileName.StartsWith(folderName); //分类是否准确
+                        bool isTrue = fileName.StartsWith(model); //分类是否准确
                         if (!isTrue)
                         {
                             //需要调整数据
@@ -303,9 +308,10 @@ namespace SQLManage.ViewModels
                         }
                     }
 
-
-                }
+                });
+               
                 ProgreVisibility = Visibility.Hidden;
+                SelectPath = null;
             }
 
         }
@@ -357,9 +363,9 @@ namespace SQLManage.ViewModels
                 string compactTime = strings[1].Split('.')[0];
 
                 DateTime result = ConvertToDateTime(compactTime);
-                Console.WriteLine(result.ToString("yyyy-MM-dd HH:mm:ss"));
-                DateTime startTime = result.AddMinutes(30);
-                DateTime endTime = result.AddMinutes(-30);
+                //Console.WriteLine(result.ToString("yyyy-MM-dd HH:mm:ss"));
+                DateTime startTime = result.AddMinutes(-10);
+                DateTime endTime = result.AddMinutes(10);
 
 
                 using (SqlSugarClient db = new SqlAccess().SystemDataAccess)
@@ -368,6 +374,11 @@ namespace SQLManage.ViewModels
                                 .Where(t => t.RecognitionTime > startTime && t.RecognitionTime < endTime)
                                 .Where(t => t.ImagePath != null && t.ImagePath.Contains(fileName))
                                 .First();
+                    //开启Sql日志输出（调试用）
+                    //db.Aop.OnLogExecuting = (sql, pars) =>
+                    //{
+                    //    Console.WriteLine("---" + sql);
+                    //};
                     //// 查询包含指定文件名的记录
                     //var record = db.Queryable<Tbl_productiondatamodel>()
                     //    .Where(t => t.ImagePath.Contains(fileName))
