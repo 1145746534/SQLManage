@@ -259,7 +259,7 @@ namespace SQLManage.ViewModels
         {
             if (SelectPath != null)
             {
-                Console.WriteLine($"UpdataRecord");
+                
                 ProgreVisibility = Visibility.Visible;
                 await Task.Run(() => {
 
@@ -267,47 +267,48 @@ namespace SQLManage.ViewModels
 
                     foreach (string subDir in subDirectories)
                     {
-                        // 获取子目录名称（不带路径）
-                        string folderName = Path.GetFileName(subDir); //
-                        string model = string.Empty;
-                        string style = string.Empty;
-                        
+
+                        string WheelPath = FileRenamer.RenameDirectory(subDir);
+                        string folderName = Path.GetFileName(WheelPath); //文件夹名称                                   
+                      
                         string[] strs = null;
                         if (folderName.Contains('_'))
                         {
                             strs = folderName.Split('_');
                         }
-                        if (folderName.Contains('-'))
-                        {
-                            strs = folderName.Split('-');
-                        }
+                        
                         if (strs == null || strs.Length != 2)
                         {
                             continue;
                         }
+                        string model = string.Empty;
+                        string style = string.Empty;
                         model = strs[0].ToUpper();
                         style = strs[1].Contains("半") ? "半成品" : "成品";
 
-                    // 获取目录下所有文件
-                    var files = Directory.GetFiles(subDir);
-                    if (files.Length == 0)
-                    {
-                        Console.WriteLine("  -- 没有找到文件");
-                        continue;
-                    }
-                    //  处理每个文件
-                    foreach (string filePath in files)
-                    {
-                        // 获取文件名和扩展名
-                        string fileName = Path.GetFileName(filePath);
-                        bool isTrue = fileName.StartsWith(model); //分类是否准确
-                        if (!isTrue)
+                        // 获取目录下所有文件
+                        var files = Directory.GetFiles(subDir);
+                        if (files.Length == 0)
                         {
-                            //需要调整数据
-                            UpdateModelByImageFileName(fileName, filePath, model, style);
+                            Console.WriteLine("  -- 没有找到文件");
+                            continue;
                         }
+                        int sum = 0;
+                        //  处理每个文件
+                        foreach (string filePath in files)
+                        {
+                            // 获取文件名和扩展名
+                            string fileName = Path.GetFileName(filePath);
+                            bool isTrue = fileName.StartsWith(model); //分类是否准确
+                            if (!isTrue)
+                            {
+                                sum++;
+                                //需要调整数据
+                                UpdateModelByImageFileName(fileName, filePath, model, style);
+                            }
+                        }
+                        Console.WriteLine($"文件夹：{folderName} 文件总数：{files.Length} 修改数：{sum} ");
                     }
-
                 });
                
                 ProgreVisibility = Visibility.Hidden;
@@ -364,8 +365,8 @@ namespace SQLManage.ViewModels
 
                 DateTime result = ConvertToDateTime(compactTime);
                 //Console.WriteLine(result.ToString("yyyy-MM-dd HH:mm:ss"));
-                DateTime startTime = result.AddMinutes(-10);
-                DateTime endTime = result.AddMinutes(10);
+                DateTime startTime = result.AddMinutes(-5);
+                DateTime endTime = result.AddMinutes(5);
 
 
                 using (SqlSugarClient db = new SqlAccess().SystemDataAccess)
@@ -379,11 +380,7 @@ namespace SQLManage.ViewModels
                     //{
                     //    Console.WriteLine("---" + sql);
                     //};
-                    //// 查询包含指定文件名的记录
-                    //var record = db.Queryable<Tbl_productiondatamodel>()
-                    //    .Where(t => t.ImagePath.Contains(fileName))
-                    //    .Where(t => t.RecognitionTime > startTime && t.RecognitionTime<endTime).Take(1).First();
-
+                  
                     if (record != null)
                     {
                         // 更新Model字段
