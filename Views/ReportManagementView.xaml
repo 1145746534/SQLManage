@@ -308,7 +308,7 @@
                             </Grid>
                         </Grid>
                     </GroupBox>
-                    <GroupBox  Header="数据纠正" Grid.Row="1" Margin="2" >
+                    <GroupBox  Header="数据纠正" Grid.Row="1" Margin="2" Visibility="Hidden" >
                         <Grid Margin="2,5,2,2">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="60"/>
