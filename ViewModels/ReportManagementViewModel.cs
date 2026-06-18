@@ -1,4 +1,4 @@
-﻿using Prism.Commands;
+using Prism.Commands;
 using Prism.Mvvm;
 using System;
 using System.Collections.Generic;
@@ -184,6 +184,85 @@ namespace SQLManage.ViewModels
             }
         }
 
+        // 多条件查询筛选属性
+        private string _filterModel;
+        public string FilterModel
+        {
+            get { return _filterModel; }
+            set { SetProperty(ref _filterModel, value); }
+        }
+
+        private string _filterWheelStyle;
+        public string FilterWheelStyle
+        {
+            get { return _filterWheelStyle; }
+            set { SetProperty(ref _filterWheelStyle, value); }
+        }
+
+        private string _filterStation;
+        public string FilterStation
+        {
+            get { return _filterStation; }
+            set { SetProperty(ref _filterStation, value); }
+        }
+
+        private string _filterResult;
+        public string FilterResult
+        {
+            get { return _filterResult; }
+            set { SetProperty(ref _filterResult, value); }
+        }
+
+        private string _filterReportWay;
+        public string FilterReportWay
+        {
+            get { return _filterReportWay; }
+            set { SetProperty(ref _filterReportWay, value); }
+        }
+
+        private string _filterRemark;
+        public string FilterRemark
+        {
+            get { return _filterRemark; }
+            set { SetProperty(ref _filterRemark, value); }
+        }
+
+        private bool _isFilterExpanded;
+        public bool IsFilterExpanded
+        {
+            get { return _isFilterExpanded; }
+            set { SetProperty(ref _isFilterExpanded, value); }
+        }
+
+        private int _queryCount;
+        public int QueryCount
+        {
+            get { return _queryCount; }
+            set { SetProperty(ref _queryCount, value); }
+        }
+        private string _filterWheelType;
+        public string FilterWheelType
+        {
+            get { return _filterWheelType; }
+            set { SetProperty(ref _filterWheelType, value); }
+        }
+
+        private bool _resultBool;
+        public bool ResultBool
+        {
+            get { return _resultBool; }
+            set { SetProperty(ref _resultBool, value); }
+        }
+
+        // 下拉选项集合
+        public ObservableCollection<string> WheelStyles { get; set; }
+            = new ObservableCollection<string> { "全部", "成品", "半成品" };
+        public ObservableCollection<string> ResultOptions { get; set; }
+            = new ObservableCollection<string> { "全部", "合格", "不合格" };
+        public ObservableCollection<string> ReportWayOptions { get; set; }
+            = new ObservableCollection<string> { "全部", "线上", "平板" };
+        public ObservableCollection<string> StationOptions { get; set; }
+            = new ObservableCollection<string>();
 
         #endregion
         #region==============命令================
@@ -216,6 +295,22 @@ namespace SQLManage.ViewModels
         /// 文件挑选
         /// </summary>
         public DelegateCommand PickFileCommand { get; set; }
+        /// <summary>
+        /// 多条件查询命令
+        /// </summary>
+        public DelegateCommand QueryCommand { get; set; }
+        /// <summary>
+        /// 重置筛选条件
+        /// </summary>
+        public DelegateCommand ResetFilterCommand { get; set; }
+        /// <summary>
+        /// 展开/收起高级筛选
+        /// </summary>
+        public DelegateCommand ExpandFilterCommand { get; set; }
+        /// <summary>
+        /// 导出当前查询/统计数据为CSV
+        /// </summary>
+        public DelegateCommand ExportCurrentDataCommand { get; set; }
         #endregion
 
         private Dictionary<string, string> result;
@@ -241,6 +336,10 @@ namespace SQLManage.ViewModels
             DataExportExcelCommand = new DelegateCommand(DataExportExcel);
             UpdataRecordCommand = new DelegateCommand(UpdataRecord);
             PickFileCommand = new DelegateCommand(PickFile);
+            QueryCommand = new DelegateCommand(QueryData);
+            ResetFilterCommand = new DelegateCommand(ResetFilter);
+            ExpandFilterCommand = new DelegateCommand(ExpandFilter);
+            ExportCurrentDataCommand = new DelegateCommand(ExportCurrentData);
 
             IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>();
             StatisticsDatas = new ObservableCollection<StatisticsDataModel>();
@@ -248,9 +347,18 @@ namespace SQLManage.ViewModels
             ProgreVisibility = Visibility.Hidden;
             PickProgreVisibility = Visibility.Hidden;
             Start();
+
+            // 初始化筛选条件默认值
+            FilterWheelStyle = "全部";
+            FilterStation = "全部";
+            FilterResult = "全部";
+            FilterReportWay = "全部";
+
+            // 加载工站列表
+            LoadStationOptions();
         }
 
-        
+
 
         /// <summary>
         /// 更新数据
@@ -259,9 +367,10 @@ namespace SQLManage.ViewModels
         {
             if (SelectPath != null)
             {
-                
+
                 ProgreVisibility = Visibility.Visible;
-                await Task.Run(() => {
+                await Task.Run(() =>
+                {
 
                     string[] subDirectories = Directory.GetDirectories(SelectPath);
 
@@ -270,13 +379,13 @@ namespace SQLManage.ViewModels
 
                         string WheelPath = FileRenamer.RenameDirectory(subDir);
                         string folderName = Path.GetFileName(WheelPath); //文件夹名称                                   
-                      
+
                         string[] strs = null;
                         if (folderName.Contains('_'))
                         {
                             strs = folderName.Split('_');
                         }
-                        
+
                         if (strs == null || strs.Length != 2)
                         {
                             continue;
@@ -310,7 +419,7 @@ namespace SQLManage.ViewModels
                         Console.WriteLine($"文件夹：{folderName} 文件总数：{files.Length} 修改数：{sum} ");
                     }
                 });
-               
+
                 ProgreVisibility = Visibility.Hidden;
                 SelectPath = null;
             }
@@ -380,7 +489,7 @@ namespace SQLManage.ViewModels
                     //{
                     //    Console.WriteLine("---" + sql);
                     //};
-                  
+
                     if (record != null)
                     {
                         // 更新Model字段
@@ -449,13 +558,9 @@ namespace SQLManage.ViewModels
         private void DataInquire()
         {
             if (StartDateTime == null)
-            {
                 return;
-            }
             if (EndDateTime == null)
-            {
                 return;
-            }
 
             StatisticsDataVisibility = Visibility.Collapsed;
             var pDB = new SqlAccess().SystemDataAccess;
@@ -466,9 +571,212 @@ namespace SQLManage.ViewModels
             IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>(productionList);
             IdentificationDataVisibility = Visibility.Visible;
             pDB.Close(); pDB.Dispose();
+        }
 
-            //else 
-            //    EventMessage.SystemMessageDisplay(result.Result, MessageType.Warning);
+        /// <summary>
+        /// 多条件数据查询
+        /// </summary>
+        private void QueryData()
+        {
+            if (StartDateTime == null || EndDateTime == null)
+            {
+                MessageBox.Show("请选择时间范围", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            StatisticsDataVisibility = Visibility.Collapsed;
+            var pDB = new SqlAccess().SystemDataAccess;
+
+            var query = pDB.Queryable<Tbl_productiondatamodel>()
+                .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime);
+
+            // 多条件查询
+            if (!string.IsNullOrWhiteSpace(FilterModel))
+                query = query.Where(it => it.Model.Contains(FilterModel));
+
+            if (!string.IsNullOrWhiteSpace(FilterWheelStyle) && FilterWheelStyle != "全部")
+                query = query.Where(it => it.WheelStyle == FilterWheelStyle);
+
+            if (!string.IsNullOrWhiteSpace(FilterStation) && FilterStation != "全部")
+                query = query.Where(it => it.Station == FilterStation);
+
+            if (!string.IsNullOrWhiteSpace(FilterResult) && FilterResult != "全部")
+                query = query.Where(it => it.ResultBool == (FilterResult == "合格"));
+
+            if (!string.IsNullOrWhiteSpace(FilterReportWay) && FilterReportWay != "全部")
+                query = query.Where(it => it.ReportWay == FilterReportWay);
+
+            if (!string.IsNullOrWhiteSpace(FilterRemark))
+                query = query.Where(it => it.Remark == FilterRemark);
+
+            var productionList = query.OrderBy(it => it.ID, OrderByType.Desc).ToList();
+
+            IdentificationDatas?.Clear();
+            IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>(productionList);
+            IdentificationDataVisibility = Visibility.Visible;
+            QueryCount = productionList.Count;
+            pDB.Close(); pDB.Dispose();
+        }
+
+        /// <summary>
+        /// 重置筛选条件
+        /// </summary>
+        private void ResetFilter()
+        {
+            StartDateTime = DateTime.Now.AddHours(-8);
+            EndDateTime = DateTime.Now;
+            FilterModel = string.Empty;
+            FilterWheelStyle = "全部";
+            FilterStation = "全部";
+            FilterResult = "全部";
+            FilterReportWay = "全部";
+            FilterRemark = string.Empty;
+            IsFilterExpanded = false;
+        }
+
+        /// <summary>
+        /// 展开/收起高级筛选
+        /// </summary>
+        private void ExpandFilter()
+        {
+            IsFilterExpanded = !IsFilterExpanded;
+        }
+
+        /// <summary>
+        /// 导出当前查询/统计数据为CSV
+        /// </summary>
+        private void ExportCurrentData()
+        {
+            // 判断当前显示的是识别数据还是统计数据
+            if (IdentificationDataVisibility == Visibility.Visible && IdentificationDatas != null && IdentificationDatas.Count > 0)
+            {
+                ExportToCsv(IdentificationDatas.ToList());
+            }
+            else if (StatisticsDataVisibility == Visibility.Visible && StatisticsDatas != null && StatisticsDatas.Count > 0)
+            {
+                ExportStatisticsToCsv(StatisticsDatas.ToList());
+            }
+            else
+            {
+                MessageBox.Show("当前没有可导出的数据，请先查询或统计！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        private void ExportToCsv(List<Tbl_productiondatamodel> dataList)
+        {
+            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "CSV文件 (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                FileName = $"识别数据_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            };
+
+            if (saveFileDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                using (var writer = new StreamWriter(saveFileDialog.FileName, false, Encoding.UTF8))
+                {
+                    // 写入CSV表头
+                    writer.WriteLine("序号,轮毂型号,轮毂样式,轮毂高度,轮毂温度,工站,检查结果,NG编号,上报方式,相似度,识别时间");
+
+                    foreach (var item in dataList)
+                    {
+                        string result = item.ResultBool ? "合格" : "不合格";
+                        string remark = item.Remark == "-1" ? "合格" : item.Remark;
+                        string time = item.RecognitionTime.ToString("yyyy/MM/dd HH:mm:ss");
+
+                        // CSV转义处理
+                        writer.WriteLine($"{item.ID},{EscapeCsvField(item.Model)},{EscapeCsvField(item.WheelStyle)}," +
+                            $"{item.WheelHeight},{item.WheelTemperature},{EscapeCsvField(item.Station)}," +
+                            $"{result},{EscapeCsvField(remark)},{EscapeCsvField(item.ReportWay)}," +
+                            $"{item.Similarity},{time}");
+                    }
+                }
+
+                MessageBox.Show($"导出成功！共 {dataList.Count} 条记录。\n文件路径：{saveFileDialog.FileName}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExportStatisticsToCsv(List<StatisticsDataModel> dataList)
+        {
+            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "CSV文件 (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                FileName = $"统计数据_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            };
+
+            if (saveFileDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                using (var writer = new StreamWriter(saveFileDialog.FileName, false, Encoding.UTF8))
+                {
+                    // 写入CSV表头
+                    writer.WriteLine("序号,轮毂型号,样式,轮毂数量,合格数,主要NG");
+
+                    foreach (var item in dataList)
+                    {
+                        writer.WriteLine($"{item.Index},{EscapeCsvField(item.Model)},{EscapeCsvField(item.WheelStyle)}," +
+                            $"{item.WheelCount},{item.PassCount},{EscapeCsvField(item.MostOfNG)}");
+                    }
+                }
+
+                MessageBox.Show($"导出成功！共 {dataList.Count} 条记录。\n文件路径：{saveFileDialog.FileName}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// CSV字段转义（处理逗号、引号、换行）
+        /// </summary>
+        private string EscapeCsvField(string field)
+        {
+            if (string.IsNullOrEmpty(field))
+                return string.Empty;
+
+            if (field.Contains(",") || field.Contains("\"") || field.Contains("\n") || field.Contains("\r"))
+            {
+                return $"\"{field.Replace("\"", "\"\"")}\"";
+            }
+            return field;
+        }
+
+        /// <summary>
+        /// 加载工站列表
+        /// </summary>
+        private void LoadStationOptions()
+        {
+            try
+            {
+                var pDB = new SqlAccess().SystemDataAccess;
+                var stations = pDB.Queryable<Tbl_productiondatamodel>()
+                    .Where(it => !string.IsNullOrEmpty(it.Station))
+                    .Select(it => it.Station)
+                    .ToList()
+                    .Distinct()
+                    .OrderBy(s => s)
+                    .ToList();
+
+                StationOptions?.Clear();
+                StationOptions.Add("全部");
+                foreach (var station in stations)
+                    StationOptions.Add(station);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"加载工站列表失败: {ex.Message}");
+            }
         }
         /// <summary>
         /// 数据统计
@@ -489,7 +797,7 @@ namespace SQLManage.ViewModels
             var pDB = new SqlAccess().SystemDataAccess;
             // 从数据库读取的数据
             var productionList = pDB.Queryable<Tbl_productiondatamodel>()
-                                                        .Where(it => it.RecognitionTime > StartDateTime &&it.RecognitionTime <= EndDateTime)
+                                                        .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime)
                                                         .ToList();
             // 生成统计结果
             List<StatisticsDataModel> statistics = GenerateStatistics(productionList);
@@ -556,47 +864,73 @@ namespace SQLManage.ViewModels
         /// </summary>
         private async void DataExportAsync()
         {
-            if (IdentificationDatas.Count == 0 && StatisticsDatas.Count == 0)
+            ProgressDialogController controller = await this._dialogCoordinator.ShowProgressAsync(this, "数据导出", "数据导出到本地中");
+
+            try
             {
-                //EventMessage.SystemMessageDisplay("无导出的数据，请检查！", MessageType.Warning);
-                return;
+                if (StartDateTime == null || EndDateTime == null)
+                {
+                    await _dialogCoordinator.ShowMessageAsync(this, "提示", "请先设置开始时间和结束时间！");
+                    return;
+                }
+
+                //班次
+                DateTime now = DateTime.Now;
+                DateTime today = now.Date;
+                DateTime today8 = today.AddHours(8);
+                DateTime today20 = today.AddHours(20);
+                string workShift = string.Empty;
+                if (now >= today8 && now < today20)
+                {
+                    // 当前是A班
+                    workShift = "白";
+                }
+                else
+                {
+                    workShift = "晚";
+                }
+                string path = string.Empty;
+                controller.SetIndeterminate();
+
+                //await Task.Delay(3000);       
+                await Task.Run(() =>
+                {
+                    var db = new SqlAccess().SystemDataAccess;
+                    List<Tbl_productiondatamodel> list = db.Queryable<Tbl_productiondatamodel>()
+                        .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime)
+                        .ToList();
+                    db.Close(); db.Dispose();
+
+                    if (list.Count == 0)
+                    {
+                        path = string.Empty;
+                        return;
+                    }
+
+                    ExportProducts("半成品", list, workShift);
+                    path = ExportProducts("成品", list, workShift);
+                });
+               
+                if (string.IsNullOrEmpty(path))
+                {
+                    await _dialogCoordinator.ShowMessageAsync(this, "提示", $"该时间段内没有数据！{StartDateTime} >> {EndDateTime}");
+                    return;
+                }
+
+                Console.WriteLine($"数据导出完成");
+                //EventMessage.SystemMessageDisplay("数据导出完成", MessageType.Success);
+                await Task.Delay(100);
+                Process.Start("explorer.exe", path);
+
             }
-
-            //班次
-            DateTime now = DateTime.Now;
-            DateTime today = now.Date;
-            DateTime today8 = today.AddHours(8);
-            DateTime today20 = today.AddHours(20);
-            string workShift = string.Empty;
-            if (now >= today8 && now < today20)
+            catch (Exception ex)
             {
-                // 当前是A班
-                workShift = "白";
+                await _dialogCoordinator.ShowMessageAsync(this, "错误", $"数据导出失败: {ex.Message}");
             }
-            else
+            finally
             {
-                workShift = "晚";
+                await controller.CloseAsync();
             }
-            string path = string.Empty;
-            var controller = await this._dialogCoordinator.ShowProgressAsync(this, "数据导出", "数据导出到本地中");
-            controller.SetIndeterminate();
-
-            //await Task.Delay(3000);       
-            await Task.Run(() =>
-            {
-
-                List<Tbl_productiondatamodel> list = IdentificationDatas.ToList();
-
-                ExportProducts("半成品", list, workShift);
-                path = ExportProducts("成品", list, workShift);
-            });
-            await controller.CloseAsync();
-            Console.WriteLine($"数据导出完成");
-            //EventMessage.SystemMessageDisplay("数据导出完成", MessageType.Success);
-            await Task.Delay(500);
-            Process.Start("explorer.exe", path);
-
-
         }
 
 
