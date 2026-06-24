@@ -199,11 +199,11 @@ namespace SQLManage.ViewModels
             set { SetProperty(ref _filterWheelStyle, value); }
         }
 
-        private string _filterStation;
-        public string FilterStation
+        private ObservableCollection<string> _filterStations;
+        public ObservableCollection<string> FilterStations
         {
-            get { return _filterStation; }
-            set { SetProperty(ref _filterStation, value); }
+            get { return _filterStations; }
+            set { SetProperty(ref _filterStations, value); }
         }
 
         private string _filterResult;
@@ -227,26 +227,12 @@ namespace SQLManage.ViewModels
             set { SetProperty(ref _filterRemark, value); }
         }
 
-        private bool _isFilterExpanded;
-        public bool IsFilterExpanded
-        {
-            get { return _isFilterExpanded; }
-            set { SetProperty(ref _isFilterExpanded, value); }
-        }
-
         private int _queryCount;
         public int QueryCount
         {
             get { return _queryCount; }
             set { SetProperty(ref _queryCount, value); }
         }
-        private string _filterWheelType;
-        public string FilterWheelType
-        {
-            get { return _filterWheelType; }
-            set { SetProperty(ref _filterWheelType, value); }
-        }
-
         private bool _resultBool;
         public bool ResultBool
         {
@@ -304,10 +290,6 @@ namespace SQLManage.ViewModels
         /// </summary>
         public DelegateCommand ResetFilterCommand { get; set; }
         /// <summary>
-        /// 展开/收起高级筛选
-        /// </summary>
-        public DelegateCommand ExpandFilterCommand { get; set; }
-        /// <summary>
         /// 导出当前查询/统计数据为CSV
         /// </summary>
         public DelegateCommand ExportCurrentDataCommand { get; set; }
@@ -338,7 +320,6 @@ namespace SQLManage.ViewModels
             PickFileCommand = new DelegateCommand(PickFile);
             QueryCommand = new DelegateCommand(QueryData);
             ResetFilterCommand = new DelegateCommand(ResetFilter);
-            ExpandFilterCommand = new DelegateCommand(ExpandFilter);
             ExportCurrentDataCommand = new DelegateCommand(ExportCurrentData);
 
             IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>();
@@ -350,7 +331,7 @@ namespace SQLManage.ViewModels
 
             // 初始化筛选条件默认值
             FilterWheelStyle = "全部";
-            FilterStation = "全部";
+            FilterStations = new ObservableCollection<string> { "全部" };
             FilterResult = "全部";
             FilterReportWay = "全部";
 
@@ -597,8 +578,11 @@ namespace SQLManage.ViewModels
             if (!string.IsNullOrWhiteSpace(FilterWheelStyle) && FilterWheelStyle != "全部")
                 query = query.Where(it => it.WheelStyle == FilterWheelStyle);
 
-            if (!string.IsNullOrWhiteSpace(FilterStation) && FilterStation != "全部")
-                query = query.Where(it => it.Station == FilterStation);
+            if (FilterStations != null && FilterStations.Count > 0 && !FilterStations.Contains("全部"))
+            {
+                var stations = FilterStations.ToList();
+                query = query.Where(it => stations.Contains(it.Station));
+            }
 
             if (!string.IsNullOrWhiteSpace(FilterResult) && FilterResult != "全部")
                 query = query.Where(it => it.ResultBool == (FilterResult == "合格"));
@@ -627,19 +611,10 @@ namespace SQLManage.ViewModels
             EndDateTime = DateTime.Now;
             FilterModel = string.Empty;
             FilterWheelStyle = "全部";
-            FilterStation = "全部";
+            FilterStations = new ObservableCollection<string> { "全部" };
             FilterResult = "全部";
             FilterReportWay = "全部";
             FilterRemark = string.Empty;
-            IsFilterExpanded = false;
-        }
-
-        /// <summary>
-        /// 展开/收起高级筛选
-        /// </summary>
-        private void ExpandFilter()
-        {
-            IsFilterExpanded = !IsFilterExpanded;
         }
 
         /// <summary>
@@ -896,9 +871,32 @@ namespace SQLManage.ViewModels
                 await Task.Run(() =>
                 {
                     var db = new SqlAccess().SystemDataAccess;
-                    List<Tbl_productiondatamodel> list = db.Queryable<Tbl_productiondatamodel>()
-                        .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime)
-                        .ToList();
+                    var query = db.Queryable<Tbl_productiondatamodel>()
+                        .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime);
+
+                    // 多条件查询
+                    if (!string.IsNullOrWhiteSpace(FilterModel))
+                        query = query.Where(it => it.Model.Contains(FilterModel));
+
+                    if (!string.IsNullOrWhiteSpace(FilterWheelStyle) && FilterWheelStyle != "全部")
+                        query = query.Where(it => it.WheelStyle == FilterWheelStyle);
+
+                    if (FilterStations != null && FilterStations.Count > 0 && !FilterStations.Contains("全部"))
+                    {
+                        var stations = FilterStations.ToList();
+                        query = query.Where(it => stations.Contains(it.Station));
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(FilterResult) && FilterResult != "全部")
+                        query = query.Where(it => it.ResultBool == (FilterResult == "合格"));
+
+                    if (!string.IsNullOrWhiteSpace(FilterReportWay) && FilterReportWay != "全部")
+                        query = query.Where(it => it.ReportWay == FilterReportWay);
+
+                    if (!string.IsNullOrWhiteSpace(FilterRemark))
+                        query = query.Where(it => it.Remark == FilterRemark);
+
+                    List<Tbl_productiondatamodel> list = query.ToList();
                     db.Close(); db.Dispose();
 
                     if (list.Count == 0)
@@ -936,14 +934,34 @@ namespace SQLManage.ViewModels
 
         private async void DataExportExcel()
         {
+            ProgressDialogController controller = await this._dialogCoordinator.ShowProgressAsync(this, "数据导出", "数据导出到本地中");
 
-            await AsyncExport();
+            try
+            {
+                controller.SetIndeterminate();
+                string path = await AsyncExport();
 
-            Console.WriteLine($"数据导出完成");
-            //EventMessage.SystemMessageDisplay("数据导出完成", MessageType.Success);
+                if (string.IsNullOrEmpty(path))
+                {
+                    await _dialogCoordinator.ShowMessageAsync(this, "提示", "该时间段内没有数据！");
+                    return;
+                }
+
+                //Console.WriteLine($"数据导出完成");
+                await Task.Delay(100);
+                Process.Start("explorer.exe", path);
+            }
+            catch (Exception ex)
+            {
+                await _dialogCoordinator.ShowMessageAsync(this, "错误", $"数据导出失败: {ex.Message}");
+            }
+            finally
+            {
+                await controller.CloseAsync();
+            }
         }
 
-        public async Task<bool> AsyncExport()
+        public async Task<string> AsyncExport()
         {
             //1.查询上一个班次的数据
             DateTime now = DateTime.Now;
@@ -982,6 +1000,8 @@ namespace SQLManage.ViewModels
 
             StartDateTime = lastShiftStart;
             EndDateTime = lastShiftEnd;
+
+            string resultPath = string.Empty;
             await Task.Run(() =>
             {
 
@@ -1003,14 +1023,10 @@ namespace SQLManage.ViewModels
 
                 //ExportProducts(finishedProducts, workShift);
                 ExportProducts("半成品", list, workShift);
-                ExportProducts("成品", list, workShift);
-
-
-                //PrintSummaryResults(summaryResults);
-
+                resultPath = ExportProducts("成品", list, workShift);
             });
 
-            return true;
+            return resultPath;
         }
 
         private string ExportProducts(string style, List<Tbl_productiondatamodel> products, string workShift)
