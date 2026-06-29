@@ -58,11 +58,17 @@
     </ApplicationDefinition>
     <Compile Include="Models\ExportDataModel.cs" />
     <Compile Include="Models\GetDateTimeModel.cs" />
+    <Compile Include="Models\PaintingTotalModel.cs" />
+    <Compile Include="Models\FirstPassYieldModel.cs" />
+    <Compile Include="Models\MissedInspectionModel.cs" />
+    <Compile Include="Models\PackagingModel.cs" />
     <Compile Include="Models\StatisticsDataModel.cs" />
     <Compile Include="Models\Tbl_productiondatamodel.cs" />
     <Compile Include="Util\BoolToResultConverter.cs" />
     <Compile Include="Util\BoolToVisibilityConverter.cs" />
+    <Compile Include="Util\DataViewTemplateSelector.cs" />
     <Compile Include="Util\DirectoryScanner.cs" />
+    <Compile Include="Util\EnumToVisibilityConverter.cs" />
     <Compile Include="Util\ExcelHelper.cs" />
     <Compile Include="Util\FileNameChecker.cs" />
     <Compile Include="Util\FileRenamer.cs" />

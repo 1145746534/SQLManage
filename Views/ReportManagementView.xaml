@@ -16,6 +16,45 @@
             <!-- 转换器 -->
             <util:ResultConverter x:Key="ResultConverter" />
             <util:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            <util:EnumToVisibilityConverter x:Key="EnumToVisibilityConverter" />
+            <!-- DataGrid 选中行样式 -->
+            <SolidColorBrush x:Key="SelectionBg" Color="#2675BF"/>
+            <SolidColorBrush x:Key="SelectionFg" Color="White"/>
+            <SolidColorBrush x:Key="InactiveSelectionBg" Color="#99B4D1"/>
+            <SolidColorBrush x:Key="InactiveSelectionFg" Color="#333"/>
+            <Style x:Key="DataGridSelectionCellStyle" TargetType="DataGridCell">
+                <Style.Triggers>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="{StaticResource SelectionBg}"/>
+                        <Setter Property="Foreground" Value="{StaticResource SelectionFg}"/>
+                    </Trigger>
+                    <MultiTrigger>
+                        <MultiTrigger.Conditions>
+                            <Condition Property="IsSelected" Value="True"/>
+                            <Condition Property="Selector.IsSelectionActive" Value="False"/>
+                        </MultiTrigger.Conditions>
+                        <Setter Property="Background" Value="{StaticResource InactiveSelectionBg}"/>
+                        <Setter Property="Foreground" Value="{StaticResource InactiveSelectionFg}"/>
+                    </MultiTrigger>
+                </Style.Triggers>
+            </Style>
+            <Style TargetType="DataGridRow" x:Key="DataGridRowStyleKey">
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="#D6E4F0"/>
+                    </Trigger>
+                    <Trigger Property="IsSelected" Value="True">
+                        <Setter Property="Background" Value="{StaticResource SelectionBg}"/>
+                    </Trigger>
+                    <MultiTrigger>
+                        <MultiTrigger.Conditions>
+                            <Condition Property="IsSelected" Value="True"/>
+                            <Condition Property="Selector.IsSelectionActive" Value="False"/>
+                        </MultiTrigger.Conditions>
+                        <Setter Property="Background" Value="{StaticResource InactiveSelectionBg}"/>
+                    </MultiTrigger>
+                </Style.Triggers>
+            </Style>
             <!-- 日期选择器样式 -->
             <Style x:Key="DatePickerStyle" TargetType="{x:Type DatePicker}">
                 <Setter Property="Foreground" Value="#FF333333"/>
@@ -217,6 +256,22 @@
                         Width="155" Height="30" 
                         FontSize="13"
                         Style="{StaticResource MahApps.Styles.Button.Square}"/>
+                    <Button Content="🔍 查询涂装下线总数" Command="{Binding QueryPaintingTotalCommand}"
+                        Margin="8,0,0,0" Width="155" Height="30" 
+                        FontSize="13"
+                        Style="{StaticResource MahApps.Styles.Button.Square}"/>
+                    <Button Content="📉 一次下线不良率/成品率" Command="{Binding QueryFirstPassYieldCommand}"
+                        Margin="8,0,0,0" Width="175" Height="30" 
+                        FontSize="13"
+                        Style="{StaticResource MahApps.Styles.Button.Square}"/>
+                    <Button Content="🔎 一检漏检率" Command="{Binding QueryMissedInspectionCommand}"
+                        Margin="8,0,0,0" Width="115" Height="30" 
+                        FontSize="13"
+                        Style="{StaticResource MahApps.Styles.Button.Square}"/>
+                    <Button Content="📦 入库包装数" Command="{Binding QueryPackagingCommand}"
+                        Margin="8,0,0,0" Width="115" Height="30" 
+                        FontSize="13"
+                        Style="{StaticResource MahApps.Styles.Button.Square}"/>
                 </StackPanel>
 
                 <!-- 记录数统计 -->
@@ -240,153 +295,217 @@
         <!-- 数据区域 -->
         <Border Grid.Row="2" Padding="8" Background="White" Margin="0,5">
             <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="949*"/>
+                    <ColumnDefinition Width="615*"/>
+                </Grid.ColumnDefinitions>
                 <!-- 识别数据表格 -->
                 <DataGrid ItemsSource="{Binding IdentificationDatas}"
-                    Visibility="{Binding IdentificationDataVisibility}"
-                    Background="Transparent" 
-                    BorderThickness="1" 
-                    BorderBrush="#E0E0E0"
-                    IsReadOnly="True" 
-                    FontSize="13" 
-                    Foreground="#333"
-                    AutoGenerateColumns="False" 
-                    CanUserResizeColumns="True"
-                    SelectionMode="Extended" 
-                    GridLinesVisibility="All"
+                    Visibility="{Binding CurrentDataView, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Identification}"
+                    CellStyle="{StaticResource DataGridSelectionCellStyle}"
+                    RowStyle="{StaticResource DataGridRowStyleKey}"
+                    Background="Transparent" BorderThickness="1" BorderBrush="#E0E0E0"
+                    IsReadOnly="True" FontSize="13" Foreground="#333"
+                    AutoGenerateColumns="False" CanUserResizeColumns="True"
+                    SelectionMode="Extended" GridLinesVisibility="All"
                     HeadersVisibility="Column"
-                    RowBackground="White" 
-                    AlternatingRowBackground="#FAFAFA"
-                    HorizontalScrollBarVisibility="Auto"
-                    VerticalScrollBarVisibility="Auto">
-                    <DataGrid.Style>
-                        <Style TargetType="DataGrid">
-                            <Setter Property="GridLinesVisibility" Value="All"/>
-                            <Setter Property="HeadersVisibility" Value="Column"/>
-                            <Setter Property="AutoGenerateColumns" Value="False"/>
-                            <Setter Property="CanUserResizeColumns" Value="True"/>
-                            <Setter Property="SelectionMode" Value="Extended"/>
-                            <Setter Property="IsReadOnly" Value="True"/>
-                            <Setter Property="FontSize" Value="13"/>
-                            <Setter Property="Foreground" Value="#333"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="BorderBrush" Value="#E0E0E0"/>
-                            <Setter Property="BorderThickness" Value="1"/>
-                            <Setter Property="RowBackground" Value="White"/>
-                            <Setter Property="AlternatingRowBackground" Value="#FAFAFA"/>
-                            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
-                            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-                        </Style>
-                    </DataGrid.Style>
+                    RowBackground="White" AlternatingRowBackground="#FAFAFA"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="2">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="序号" Binding="{Binding ID}" 
-                                         Width="60" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="轮毂型号" Binding="{Binding Model}" 
-                                         Width="100" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="轮毂样式" Binding="{Binding WheelStyle}" 
-                                         Width="90" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="轮毂高度" Binding="{Binding WheelHeight}" 
-                                         Width="90" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="轮毂温度" Binding="{Binding WheelTemperature}" 
-                                         Width="90" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="工站" Binding="{Binding Station}" 
-                                         Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="序号" Binding="{Binding ID}" Width="60" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂型号" Binding="{Binding Model}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂样式" Binding="{Binding WheelStyle}" Width="90" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂高度" Binding="{Binding WheelHeight}" Width="90" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂温度" Binding="{Binding WheelTemperature}" Width="90" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="工站" Binding="{Binding Station}" Width="80" IsReadOnly="True"/>
                         <DataGridTemplateColumn Header="检查结果" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding ResultBool, 
-                                             Converter={StaticResource ResultConverter}}"
-                                             HorizontalAlignment="Center"
-                                             FontWeight="Medium"/>
+                                    <TextBlock Text="{Binding ResultBool, Converter={StaticResource ResultConverter}}"
+                                             HorizontalAlignment="Center" FontWeight="Medium"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         <DataGridTemplateColumn Header="NG编号" Width="90">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding Remark, 
-                                             Converter={StaticResource ResultConverter}}"
-                                             HorizontalAlignment="Center"
-                                             FontWeight="Medium"/>
+                                    <TextBlock Text="{Binding Remark, Converter={StaticResource ResultConverter}}"
+                                             HorizontalAlignment="Center" FontWeight="Medium"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="上报方式" Binding="{Binding ReportWay}" 
-                                         Width="90" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="相似度" Binding="{Binding Similarity}" 
-                                         Width="80" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="识别时间" 
-                                         Binding="{Binding RecognitionTime, 
-                                                 StringFormat={}{0:yyyy/MM/dd HH:mm:ss}}"
-                                         Width="150" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="上报方式" Binding="{Binding ReportWay}" Width="90" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="相似度" Binding="{Binding Similarity}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="识别时间" Binding="{Binding RecognitionTime, StringFormat={}{0:yyyy/MM/dd HH:mm:ss}}" Width="150" IsReadOnly="True"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
                 <!-- 统计数据表格 -->
                 <DataGrid ItemsSource="{Binding StatisticsDatas}"
-                    Visibility="{Binding StatisticsDataVisibility}"
-                    Background="Transparent" 
-                    BorderThickness="1" 
-                    BorderBrush="#E0E0E0"
-                    IsReadOnly="True" 
-                    FontSize="13" 
-                    Foreground="#333"
-                    AutoGenerateColumns="False" 
-                    CanUserResizeColumns="True"
-                    SelectionMode="Single" 
-                    GridLinesVisibility="All"
+                    Visibility="{Binding CurrentDataView, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Statistics}"
+                    CellStyle="{StaticResource DataGridSelectionCellStyle}"
+                    RowStyle="{StaticResource DataGridRowStyleKey}"
+                    Background="Transparent" BorderThickness="1" BorderBrush="#E0E0E0"
+                    IsReadOnly="True" FontSize="13" Foreground="#333"
+                    AutoGenerateColumns="False" CanUserResizeColumns="True"
+                    SelectionMode="Single" GridLinesVisibility="All"
                     HeadersVisibility="Column"
-                    RowBackground="White" 
-                    AlternatingRowBackground="#FAFAFA"
-                    HorizontalScrollBarVisibility="Auto"
-                    VerticalScrollBarVisibility="Auto">
-                    <DataGrid.Style>
-                        <Style TargetType="DataGrid">
-                            <Setter Property="GridLinesVisibility" Value="All"/>
-                            <Setter Property="HeadersVisibility" Value="Column"/>
-                            <Setter Property="AutoGenerateColumns" Value="False"/>
-                            <Setter Property="CanUserResizeColumns" Value="True"/>
-                            <Setter Property="SelectionMode" Value="Single"/>
-                            <Setter Property="IsReadOnly" Value="True"/>
-                            <Setter Property="FontSize" Value="13"/>
-                            <Setter Property="Foreground" Value="#333"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="BorderBrush" Value="#E0E0E0"/>
-                            <Setter Property="BorderThickness" Value="1"/>
-                            <Setter Property="RowBackground" Value="White"/>
-                            <Setter Property="AlternatingRowBackground" Value="#FAFAFA"/>
-                            <Setter Property="HorizontalScrollBarVisibility" Value="Auto"/>
-                            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-                        </Style>
-                    </DataGrid.Style>
+                    RowBackground="White" AlternatingRowBackground="#FAFAFA"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="2">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="序号" Binding="{Binding Index}" 
-                                         Width="70" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="轮毂型号" Binding="{Binding Model}" 
-                                         Width="120" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="样式" Binding="{Binding WheelStyle}" 
-                                         Width="120" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="轮毂数量" Binding="{Binding WheelCount}" 
-                                         Width="120" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="合格数" Binding="{Binding PassCount}" 
-                                         Width="120" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="主要NG" Binding="{Binding MostOfNG}" 
-                                         Width="*" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="序号" Binding="{Binding Index}" Width="70" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂型号" Binding="{Binding Model}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="样式" Binding="{Binding WheelStyle}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂数量" Binding="{Binding WheelCount}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="合格数" Binding="{Binding PassCount}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="主要NG" Binding="{Binding MostOfNG}" Width="*" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 涂装下线总数表格 -->
+                <DataGrid ItemsSource="{Binding PaintingTotalDatas}"
+                    Visibility="{Binding CurrentDataView, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=PaintingTotal}"
+                    CellStyle="{StaticResource DataGridSelectionCellStyle}"
+                    Background="Transparent" BorderThickness="1" BorderBrush="#E0E0E0"
+                    IsReadOnly="True" FontSize="13" Foreground="#333"
+                    AutoGenerateColumns="False" CanUserResizeColumns="True"
+                    SelectionMode="Single" GridLinesVisibility="All"
+                    HeadersVisibility="Column"
+                    RowBackground="White" AlternatingRowBackground="#FAFAFA"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="2">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow" BasedOn="{StaticResource DataGridRowStyleKey}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsTotalRow}" Value="True">
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Background" Value="#E8F5E9"/>
+                                    <Setter Property="Foreground" Value="#2E7D32"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="序号" Binding="{Binding Index}" Width="70" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂型号" Binding="{Binding Model}" Width="160" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="样式" Binding="{Binding WheelStyle}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂数量" Binding="{Binding WheelCount}" Width="120" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 一次下线不良率/成品率表格 -->
+                <DataGrid ItemsSource="{Binding FirstPassYieldDatas}"
+                    Visibility="{Binding CurrentDataView, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=FirstPassYield}"
+                    CellStyle="{StaticResource DataGridSelectionCellStyle}"
+                    Background="Transparent" BorderThickness="1" BorderBrush="#E0E0E0"
+                    IsReadOnly="True" FontSize="13" Foreground="#333"
+                    AutoGenerateColumns="False" CanUserResizeColumns="True"
+                    SelectionMode="Single" GridLinesVisibility="All"
+                    HeadersVisibility="Column"
+                    RowBackground="White" AlternatingRowBackground="#FAFAFA"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Grid.ColumnSpan="2">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow" BasedOn="{StaticResource DataGridRowStyleKey}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsTotalRow}" Value="True">
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Background" Value="#E8F5E9"/>
+                                    <Setter Property="Foreground" Value="#2E7D32"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="序号" Binding="{Binding Index}" Width="50" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂型号" Binding="{Binding Model}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="样式" Binding="{Binding WheelStyle}" Width="70" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂数量" Binding="{Binding WheelCount}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="二检1号不良" Binding="{Binding InspectionBad2}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="精车1号不良" Binding="{Binding LatheBad1}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="精车2号不良" Binding="{Binding LatheBad2}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="返修合格数" Binding="{Binding RepairOk}" Width="90" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="不良数" Binding="{Binding BadCount}" Width="70" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="涂装总数" Binding="{Binding CoatingTotal}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="不良率" Binding="{Binding BadRate, StringFormat=P2}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="成品率" Binding="{Binding YieldRate, StringFormat=P2}" Width="80" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 一检漏检率表格 -->
+                <DataGrid ItemsSource="{Binding MissedInspectionDatas}"
+                    Visibility="{Binding CurrentDataView, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=MissedInspection}"
+                    CellStyle="{StaticResource DataGridSelectionCellStyle}"
+                    Background="Transparent" BorderThickness="1" BorderBrush="#E0E0E0"
+                    IsReadOnly="True" FontSize="13" Foreground="#333"
+                    AutoGenerateColumns="False" CanUserResizeColumns="True"
+                    SelectionMode="Single" GridLinesVisibility="All"
+                    HeadersVisibility="Column"
+                    RowBackground="White" AlternatingRowBackground="#FAFAFA"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow" BasedOn="{StaticResource DataGridRowStyleKey}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsTotalRow}" Value="True">
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Background" Value="#E8F5E9"/>
+                                    <Setter Property="Foreground" Value="#2E7D32"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="序号" Binding="{Binding Index}" Width="50" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂型号" Binding="{Binding Model}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="样式" Binding="{Binding WheelStyle}" Width="70" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂数量" Binding="{Binding WheelCount}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="二检1号不良" Binding="{Binding InspectionBad2}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="涂装总数" Binding="{Binding CoatingTotal}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="漏检率" Binding="{Binding MissRate, StringFormat=P2}" Width="80" IsReadOnly="True"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- 入库包装数表格 -->
+                <DataGrid ItemsSource="{Binding PackagingDatas}"
+                    Visibility="{Binding CurrentDataView, Converter={StaticResource EnumToVisibilityConverter}, ConverterParameter=Packaging}"
+                    CellStyle="{StaticResource DataGridSelectionCellStyle}"
+                    Background="Transparent" BorderThickness="1" BorderBrush="#E0E0E0"
+                    IsReadOnly="True" FontSize="13" Foreground="#333"
+                    AutoGenerateColumns="False" CanUserResizeColumns="True"
+                    SelectionMode="Single" GridLinesVisibility="All"
+                    HeadersVisibility="Column"
+                    RowBackground="White" AlternatingRowBackground="#FAFAFA"
+                    HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <DataGrid.RowStyle>
+                        <Style TargetType="DataGridRow" BasedOn="{StaticResource DataGridRowStyleKey}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsTotalRow}" Value="True">
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Background" Value="#E8F5E9"/>
+                                    <Setter Property="Foreground" Value="#2E7D32"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </DataGrid.RowStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="序号" Binding="{Binding Index}" Width="50" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="轮毂型号" Binding="{Binding Model}" Width="120" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="样式" Binding="{Binding WheelStyle}" Width="70" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="二检总数" Binding="{Binding InspectionTotal}" Width="80" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="二检1号不良" Binding="{Binding InspectionBad2}" Width="100" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="二检合格数" Binding="{Binding InspectionOk}" Width="90" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="二检合格率" Binding="{Binding InspectionOkRate, StringFormat=P2}" Width="90" IsReadOnly="True"/>
                     </DataGrid.Columns>
                 </DataGrid>
 
                 <!-- 空状态提示 -->
                 <TextBlock Text="请输入查询条件，点击「查询」按钮"
-                    HorizontalAlignment="Center" 
-                    VerticalAlignment="Center"
-                    FontSize="16" 
-                    Foreground="#AAA"
-                    Visibility="{Binding IdentificationDataVisibility, 
+                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                    FontSize="16" Foreground="#AAA" Opacity="0.6"
+                    Visibility="{Binding HasData, 
                              Converter={StaticResource BoolToVisibilityConverter}, 
-                             ConverterParameter=Inverted}"
-                    Opacity="0.6"/>
+                             ConverterParameter=Inverted}" Margin="654,0,0,0"/>
             </Grid>
         </Border>
 
-        <!-- 数据纠正区域 -->
+
     </Grid>
 </UserControl>

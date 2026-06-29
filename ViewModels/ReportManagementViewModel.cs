@@ -21,6 +21,27 @@ namespace SQLManage.ViewModels
 {
     internal class ReportManagementViewModel : BindableBase
     {
+        /// <summary>
+        /// 数据视图类型枚举
+        /// </summary>
+        public enum DataViewType
+        {
+            /// <summary>无数据</summary>
+            None,
+            /// <summary>识别数据</summary>
+            Identification,
+            /// <summary>统计数据</summary>
+            Statistics,
+            /// <summary>涂装下线总数</summary>
+            PaintingTotal,
+            /// <summary>一次下线不良率/成品率</summary>
+            FirstPassYield,
+            /// <summary>一检漏检率</summary>
+            MissedInspection,
+            /// <summary>入库包装数</summary>
+            Packaging
+        }
+
         public string Title { get; set; } = "报表管理";
 
         #region==============属性================
@@ -73,24 +94,102 @@ namespace SQLManage.ViewModels
             set { SetProperty(ref _statisticsDatas, value); }
         }
 
-        private Visibility _identificationDataVisibility;
+        private ObservableCollection<PaintingTotalModel> _paintingTotalDatas;
         /// <summary>
-        /// 识别数据表格显示控制
+        /// 涂装下线总数数据
         /// </summary>
-        public Visibility IdentificationDataVisibility
+        public ObservableCollection<PaintingTotalModel> PaintingTotalDatas
         {
-            get { return _identificationDataVisibility; }
-            set { SetProperty(ref _identificationDataVisibility, value); }
+            get { return _paintingTotalDatas; }
+            set { SetProperty(ref _paintingTotalDatas, value); }
         }
 
-        private Visibility _statisticsDataVisibility;
+        private ObservableCollection<FirstPassYieldModel> _firstPassYieldDatas;
         /// <summary>
-        /// 统计数据表格显示控制
+        /// 一次下线不良率/成品率数据
         /// </summary>
-        public Visibility StatisticsDataVisibility
+        public ObservableCollection<FirstPassYieldModel> FirstPassYieldDatas
         {
-            get { return _statisticsDataVisibility; }
-            set { SetProperty(ref _statisticsDataVisibility, value); }
+            get { return _firstPassYieldDatas; }
+            set { SetProperty(ref _firstPassYieldDatas, value); }
+        }
+
+        private ObservableCollection<MissedInspectionModel> _missedInspectionDatas;
+        public ObservableCollection<MissedInspectionModel> MissedInspectionDatas
+        {
+            get { return _missedInspectionDatas; }
+            set { SetProperty(ref _missedInspectionDatas, value); }
+        }
+
+        private ObservableCollection<PackagingModel> _packagingDatas;
+        public ObservableCollection<PackagingModel> PackagingDatas
+        {
+            get { return _packagingDatas; }
+            set { SetProperty(ref _packagingDatas, value); }
+        }
+
+        private DataViewType _currentDataView;
+        /// <summary>
+        /// 当前显示的数据视图类型（替代多个 Visibility 属性，用 ContentControl+TemplateSelector 切换）
+        /// </summary>
+        public DataViewType CurrentDataView
+        {
+            get { return _currentDataView; }
+            set
+            {
+                if (SetProperty(ref _currentDataView, value))
+                {
+                    HasData = value != DataViewType.None;
+                    UpdateQueryCountForView(value);
+                }
+            }
+        }
+
+        private bool _hasData;
+        /// <summary>
+        /// 是否有数据显示（用于空状态提示）
+        /// </summary>
+        public bool HasData
+        {
+            get { return _hasData; }
+            set { SetProperty(ref _hasData, value); }
+        }
+
+        private void UpdateQueryCountForView(DataViewType viewType)
+        {
+            switch (viewType)
+            {
+                case DataViewType.Identification:
+                    QueryCount = IdentificationDatas?.Count ?? 0;
+                    break;
+                case DataViewType.Statistics:
+                    QueryCount = StatisticsDatas?.Count ?? 0;
+                    break;
+                case DataViewType.PaintingTotal:
+                    // 涂装总数减去合计行
+                    QueryCount = PaintingTotalDatas != null
+                        ? PaintingTotalDatas.Count(p => !p.IsTotalRow)
+                        : 0;
+                    break;
+                case DataViewType.FirstPassYield:
+                    QueryCount = FirstPassYieldDatas != null
+                        ? FirstPassYieldDatas.Count(p => !p.IsTotalRow)
+                        : 0;
+                    break;
+                case DataViewType.MissedInspection:
+                    QueryCount = MissedInspectionDatas != null
+                        ? MissedInspectionDatas.Count(p => !p.IsTotalRow)
+                        : 0;
+                    break;
+                case DataViewType.Packaging:
+                    QueryCount = PackagingDatas != null
+                        ? PackagingDatas.Count(p => !p.IsTotalRow)
+                        : 0;
+                    break;
+                default:
+                    QueryCount = 0;
+                    break;
+            }
         }
 
         private ObservableCollection<string> _items;
@@ -293,6 +392,16 @@ namespace SQLManage.ViewModels
         /// 导出当前查询/统计数据为CSV
         /// </summary>
         public DelegateCommand ExportCurrentDataCommand { get; set; }
+        /// <summary>
+        /// 查询涂装下线总数
+        /// </summary>
+        public DelegateCommand QueryPaintingTotalCommand { get; set; }
+        /// <summary>
+        /// 查询一次下线不良率/成品率
+        /// </summary>
+        public DelegateCommand QueryFirstPassYieldCommand { get; set; }
+        public DelegateCommand QueryMissedInspectionCommand { get; set; }
+        public DelegateCommand QueryPackagingCommand { get; set; }
         #endregion
 
         private Dictionary<string, string> result;
@@ -321,9 +430,17 @@ namespace SQLManage.ViewModels
             QueryCommand = new DelegateCommand(QueryData);
             ResetFilterCommand = new DelegateCommand(ResetFilter);
             ExportCurrentDataCommand = new DelegateCommand(ExportCurrentData);
+            QueryPaintingTotalCommand = new DelegateCommand(QueryPaintingTotal);
+            QueryFirstPassYieldCommand = new DelegateCommand(QueryFirstPassYield);
+            QueryMissedInspectionCommand = new DelegateCommand(QueryMissedInspection);
+            QueryPackagingCommand = new DelegateCommand(QueryPackaging);
 
             IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>();
             StatisticsDatas = new ObservableCollection<StatisticsDataModel>();
+            PaintingTotalDatas = new ObservableCollection<PaintingTotalModel>();
+            FirstPassYieldDatas = new ObservableCollection<FirstPassYieldModel>();
+            MissedInspectionDatas = new ObservableCollection<MissedInspectionModel>();
+            PackagingDatas = new ObservableCollection<PackagingModel>();
 
             ProgreVisibility = Visibility.Hidden;
             PickProgreVisibility = Visibility.Hidden;
@@ -498,8 +615,6 @@ namespace SQLManage.ViewModels
         private void DataRefresh()
         {
 
-            StatisticsDataVisibility = Visibility.Collapsed;
-
             // 使用资源自动释放
             using (SqlSugarClient pDB = new SqlAccess().SystemDataAccess)
             {
@@ -534,7 +649,7 @@ namespace SQLManage.ViewModels
                 }
             }
 
-            IdentificationDataVisibility = Visibility.Visible;
+            CurrentDataView = DataViewType.Identification;
         }
         private void DataInquire()
         {
@@ -543,14 +658,13 @@ namespace SQLManage.ViewModels
             if (EndDateTime == null)
                 return;
 
-            StatisticsDataVisibility = Visibility.Collapsed;
             var pDB = new SqlAccess().SystemDataAccess;
             var productionList = pDB.Queryable<Tbl_productiondatamodel>()
                 .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime)
                 .OrderBy((sc) => sc.ID, OrderByType.Desc).ToList();
             IdentificationDatas?.Clear();
             IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>(productionList);
-            IdentificationDataVisibility = Visibility.Visible;
+            CurrentDataView = DataViewType.Identification;
             pDB.Close(); pDB.Dispose();
         }
 
@@ -565,7 +679,6 @@ namespace SQLManage.ViewModels
                 return;
             }
 
-            StatisticsDataVisibility = Visibility.Collapsed;
             var pDB = new SqlAccess().SystemDataAccess;
 
             var query = pDB.Queryable<Tbl_productiondatamodel>()
@@ -597,8 +710,8 @@ namespace SQLManage.ViewModels
 
             IdentificationDatas?.Clear();
             IdentificationDatas = new ObservableCollection<Tbl_productiondatamodel>(productionList);
-            IdentificationDataVisibility = Visibility.Visible;
             QueryCount = productionList.Count;
+            CurrentDataView = DataViewType.Identification;
             pDB.Close(); pDB.Dispose();
         }
 
@@ -622,19 +735,368 @@ namespace SQLManage.ViewModels
         /// </summary>
         private void ExportCurrentData()
         {
-            // 判断当前显示的是识别数据还是统计数据
-            if (IdentificationDataVisibility == Visibility.Visible && IdentificationDatas != null && IdentificationDatas.Count > 0)
+            // 根据当前视图类型导出对应数据
+            switch (CurrentDataView)
             {
-                ExportToCsv(IdentificationDatas.ToList());
+                case DataViewType.Identification:
+                    if (IdentificationDatas != null && IdentificationDatas.Count > 0)
+                        ExportToCsv(IdentificationDatas.ToList());
+                    else
+                        goto default;
+                    break;
+                case DataViewType.Statistics:
+                    if (StatisticsDatas != null && StatisticsDatas.Count > 0)
+                        ExportStatisticsToCsv(StatisticsDatas.ToList());
+                    else
+                        goto default;
+                    break;
+                case DataViewType.PaintingTotal:
+                    if (PaintingTotalDatas != null && PaintingTotalDatas.Count > 0)
+                        ExportPaintingTotalToCsv(PaintingTotalDatas.ToList());
+                    else
+                        goto default;
+                    break;
+                case DataViewType.FirstPassYield:
+                    if (FirstPassYieldDatas != null && FirstPassYieldDatas.Count > 0)
+                        ExportFirstPassYieldToCsv(FirstPassYieldDatas.ToList());
+                    else
+                        goto default;
+                    break;
+                case DataViewType.MissedInspection:
+                    if (MissedInspectionDatas != null && MissedInspectionDatas.Count > 0)
+                        ExportMissedInspectionToCsv(MissedInspectionDatas.ToList());
+                    else
+                        goto default;
+                    break;
+                case DataViewType.Packaging:
+                    if (PackagingDatas != null && PackagingDatas.Count > 0)
+                        ExportPackagingToCsv(PackagingDatas.ToList());
+                    else
+                        goto default;
+                    break;
+                default:
+                    MessageBox.Show("当前没有可导出的数据，请先查询或统计！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    break;
             }
-            else if (StatisticsDataVisibility == Visibility.Visible && StatisticsDatas != null && StatisticsDatas.Count > 0)
+        }
+
+        /// <summary>
+        /// 查询涂装下线总数（精车1号或精车2号的工站数据，按Model+WheelStyle归类）
+        /// </summary>
+        private void QueryPaintingTotal()
+        {
+            if (StartDateTime == null || EndDateTime == null)
             {
-                ExportStatisticsToCsv(StatisticsDatas.ToList());
+                MessageBox.Show("请选择时间范围", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            else
+
+            var pDB = new SqlAccess().SystemDataAccess;
+            var list = pDB.Queryable<Tbl_productiondatamodel>()
+                .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime)
+                .Where(it => it.Station == "精车1号" || it.Station == "精车2号")
+                .ToList();
+            pDB.Close(); pDB.Dispose();
+
+            // 按Model+WheelStyle归类统计
+            var grouped = list
+                .GroupBy(it => new { Model = it.Model ?? "无型号", WheelStyle = it.WheelStyle ?? "" })
+                .OrderBy(g => g.Key.Model)
+                .ThenBy(g => g.Key.WheelStyle)
+                .ToList();
+
+            PaintingTotalDatas?.Clear();
+            int totalCount = 0;
+            int index = 1;
+            foreach (var group in grouped)
             {
-                MessageBox.Show("当前没有可导出的数据，请先查询或统计！", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                PaintingTotalDatas.Add(new PaintingTotalModel
+                {
+                    Index = index.ToString(),
+                    Model = group.Key.Model,
+                    WheelStyle = group.Key.WheelStyle,
+                    WheelCount = group.Count(),
+                    IsTotalRow = false
+                });
+                totalCount += group.Count();
+                index++;
             }
+
+            // 添加合计行
+            PaintingTotalDatas.Add(new PaintingTotalModel
+            {
+                Index = "合计",
+                Model = string.Empty,
+                WheelStyle = string.Empty,
+                WheelCount = totalCount,
+                IsTotalRow = true
+            });
+
+            CurrentDataView = DataViewType.PaintingTotal;
+        }
+
+        /// <summary>
+        /// 一次下线不良率/成品率
+        /// </summary>
+        private void QueryFirstPassYield()
+        {
+            if (StartDateTime == null || EndDateTime == null)
+            {
+                MessageBox.Show("请选择时间范围", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var pDB = new SqlAccess().SystemDataAccess;
+            // 一次性查出所有相关工站的数据
+            var allData = pDB.Queryable<Tbl_productiondatamodel>()
+                .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime)
+                .Where(it => it.Station == "精车1号" || it.Station == "精车2号"
+                    || it.Station == "二检1号" || it.Station == "返修1号")
+                .ToList();
+            pDB.Close(); pDB.Dispose();
+
+            // 基础分组：精车1号+精车2号，按Model+WheelStyle
+            var baseData = allData
+                .Where(it => it.Station == "精车1号" || it.Station == "精车2号")
+                .GroupBy(it => new { Model = it.Model ?? "无型号", WheelStyle = it.WheelStyle ?? "" })
+                .OrderBy(g => g.Key.Model)
+                .ThenBy(g => g.Key.WheelStyle)
+                .ToList();
+
+            FirstPassYieldDatas?.Clear();
+            int totalWheelCount = 0;
+            int totalInsBad2 = 0, totalLatheBad1 = 0, totalLatheBad2 = 0, totalRepairOk = 0, totalBad = 0;
+            int index = 1;
+
+            foreach (var group in baseData)
+            {
+                string model = group.Key.Model;
+                string style = group.Key.WheelStyle;
+                int wheelCount = group.Count();
+
+                // 二检1号不良
+                int insBad2 = allData.Count(it =>
+                    it.Station == "二检1号" && (it.Model ?? "无型号") == model
+                    && it.WheelStyle == style && !it.ResultBool);
+
+                // 精车1号不良
+                int latheBad1 = allData.Count(it =>
+                    it.Station == "精车1号" && (it.Model ?? "无型号") == model
+                    && it.WheelStyle == style && !it.ResultBool);
+
+                // 精车2号不良
+                int latheBad2 = allData.Count(it =>
+                    it.Station == "精车2号" && (it.Model ?? "无型号") == model
+                    && it.WheelStyle == style && !it.ResultBool);
+
+                // 返修合格数
+                int repairOk = allData.Count(it =>
+                    it.Station == "返修1号" && (it.Model ?? "无型号") == model
+                    && it.WheelStyle == style && it.ResultBool);
+
+                int badCount = insBad2 + latheBad1 + latheBad2 - repairOk;
+
+                double badRate = wheelCount > 0 ? (double)badCount / wheelCount : 0;
+                // 不良率不能为负数
+                if (badRate < 0) badRate = 0;
+                double yieldRate = 1 - badRate;
+
+                FirstPassYieldDatas.Add(new FirstPassYieldModel
+                {
+                    Index = index.ToString(),
+                    Model = model,
+                    WheelStyle = style,
+                    WheelCount = wheelCount,
+                    InspectionBad2 = insBad2,
+                    LatheBad1 = latheBad1,
+                    LatheBad2 = latheBad2,
+                    RepairOk = repairOk,
+                    BadCount = badCount,
+                    CoatingTotal = wheelCount,
+                    BadRate = badRate,
+                    YieldRate = yieldRate,
+                    IsTotalRow = false
+                });
+
+                totalWheelCount += wheelCount;
+                totalInsBad2 += insBad2;
+                totalLatheBad1 += latheBad1;
+                totalLatheBad2 += latheBad2;
+                totalRepairOk += repairOk;
+                totalBad += badCount;
+                index++;
+            }
+
+            double totalBadRate = totalWheelCount > 0 ? (double)totalBad / totalWheelCount : 0;
+            if (totalBadRate < 0) totalBadRate = 0;
+            double totalYieldRate = 1 - totalBadRate;
+
+            // 合计行
+            FirstPassYieldDatas.Add(new FirstPassYieldModel
+            {
+                Index = "合计",
+                Model = string.Empty,
+                WheelStyle = string.Empty,
+                WheelCount = totalWheelCount,
+                InspectionBad2 = totalInsBad2,
+                LatheBad1 = totalLatheBad1,
+                LatheBad2 = totalLatheBad2,
+                RepairOk = totalRepairOk,
+                BadCount = totalBad,
+                CoatingTotal = totalWheelCount,
+                BadRate = totalBadRate,
+                YieldRate = totalYieldRate,
+                IsTotalRow = true
+            });
+
+            CurrentDataView = DataViewType.FirstPassYield;
+        }
+
+        /// <summary>
+        /// 一检漏检率
+        /// </summary>
+        private void QueryMissedInspection()
+        {
+            if (StartDateTime == null || EndDateTime == null)
+            {
+                MessageBox.Show("请选择时间范围", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var pDB = new SqlAccess().SystemDataAccess;
+            var allData = pDB.Queryable<Tbl_productiondatamodel>()
+                .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime)
+                .Where(it => it.Station == "精车1号" || it.Station == "精车2号" || it.Station == "二检1号")
+                .ToList();
+            pDB.Close(); pDB.Dispose();
+
+            var baseData = allData
+                .Where(it => it.Station == "精车1号" || it.Station == "精车2号")
+                .GroupBy(it => new { Model = it.Model ?? "无型号", WheelStyle = it.WheelStyle ?? "" })
+                .OrderBy(g => g.Key.Model)
+                .ThenBy(g => g.Key.WheelStyle)
+                .ToList();
+
+            MissedInspectionDatas?.Clear();
+            int totalWheelCount = 0, totalInsBad2 = 0;
+            int index = 1;
+
+            foreach (var group in baseData)
+            {
+                string model = group.Key.Model;
+                string style = group.Key.WheelStyle;
+                int wheelCount = group.Count();
+
+                int insBad2 = allData.Count(it =>
+                    it.Station == "二检1号" && (it.Model ?? "无型号") == model
+                    && it.WheelStyle == style && !it.ResultBool);
+
+                double missRate = wheelCount > 0 ? (double)insBad2 / wheelCount : 0;
+
+                MissedInspectionDatas.Add(new MissedInspectionModel
+                {
+                    Index = index.ToString(),
+                    Model = model,
+                    WheelStyle = style,
+                    WheelCount = wheelCount,
+                    InspectionBad2 = insBad2,
+                    CoatingTotal = wheelCount,
+                    MissRate = missRate,
+                    IsTotalRow = false
+                });
+
+                totalWheelCount += wheelCount;
+                totalInsBad2 += insBad2;
+                index++;
+            }
+
+            double totalMissRate = totalWheelCount > 0 ? (double)totalInsBad2 / totalWheelCount : 0;
+
+            MissedInspectionDatas.Add(new MissedInspectionModel
+            {
+                Index = "合计",
+                Model = string.Empty,
+                WheelStyle = string.Empty,
+                WheelCount = totalWheelCount,
+                InspectionBad2 = totalInsBad2,
+                CoatingTotal = totalWheelCount,
+                MissRate = totalMissRate,
+                IsTotalRow = true
+            });
+
+            CurrentDataView = DataViewType.MissedInspection;
+        }
+
+        /// <summary>
+        /// 入库包装数
+        /// </summary>
+        private void QueryPackaging()
+        {
+            if (StartDateTime == null || EndDateTime == null)
+            {
+                MessageBox.Show("请选择时间范围", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var pDB = new SqlAccess().SystemDataAccess;
+            var allData = pDB.Queryable<Tbl_productiondatamodel>()
+                .Where(it => it.RecognitionTime > StartDateTime && it.RecognitionTime <= EndDateTime)
+                .Where(it => it.Station == "二检1号")
+                .ToList();
+            pDB.Close(); pDB.Dispose();
+
+            var grouped = allData
+                .GroupBy(it => new { Model = it.Model ?? "无型号", WheelStyle = it.WheelStyle ?? "" })
+                .OrderBy(g => g.Key.Model)
+                .ThenBy(g => g.Key.WheelStyle)
+                .ToList();
+
+            PackagingDatas?.Clear();
+            int totalInspectionTotal = 0, totalInsBad2 = 0, totalInsOk = 0;
+            int index = 1;
+
+            foreach (var group in grouped)
+            {
+                string model = group.Key.Model;
+                string style = group.Key.WheelStyle;
+                int inspectionTotal = group.Count();
+                int insBad2 = group.Count(it => !it.ResultBool);
+                int insOk = inspectionTotal - insBad2;
+                double okRate = inspectionTotal > 0 ? (double)insOk / inspectionTotal : 0;
+
+                PackagingDatas.Add(new PackagingModel
+                {
+                    Index = index.ToString(),
+                    Model = model,
+                    WheelStyle = style,
+                    InspectionTotal = inspectionTotal,
+                    InspectionBad2 = insBad2,
+                    InspectionOk = insOk,
+                    InspectionOkRate = okRate,
+                    IsTotalRow = false
+                });
+
+                totalInspectionTotal += inspectionTotal;
+                totalInsBad2 += insBad2;
+                totalInsOk += insOk;
+                index++;
+            }
+
+            double totalOkRate = totalInspectionTotal > 0 ? (double)totalInsOk / totalInspectionTotal : 0;
+
+            PackagingDatas.Add(new PackagingModel
+            {
+                Index = "合计",
+                Model = string.Empty,
+                WheelStyle = string.Empty,
+                InspectionTotal = totalInspectionTotal,
+                InspectionBad2 = totalInsBad2,
+                InspectionOk = totalInsOk,
+                InspectionOkRate = totalOkRate,
+                IsTotalRow = true
+            });
+
+            CurrentDataView = DataViewType.Packaging;
         }
 
         private void ExportToCsv(List<Tbl_productiondatamodel> dataList)
@@ -712,6 +1174,143 @@ namespace SQLManage.ViewModels
             }
         }
 
+        private void ExportPaintingTotalToCsv(List<PaintingTotalModel> dataList)
+        {
+            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "CSV文件 (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                FileName = $"涂装下线总数_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            };
+
+            if (saveFileDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                using (var writer = new StreamWriter(saveFileDialog.FileName, false, Encoding.UTF8))
+                {
+                    writer.WriteLine("序号,轮毂型号,样式,轮毂数量");
+
+                    foreach (var item in dataList)
+                    {
+                        writer.WriteLine($"{EscapeCsvField(item.Index)},{EscapeCsvField(item.Model)}," +
+                            $"{EscapeCsvField(item.WheelStyle)},{item.WheelCount}");
+                    }
+                }
+
+                MessageBox.Show($"导出成功！共 {dataList.Count} 条记录。\n文件路径：{saveFileDialog.FileName}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExportFirstPassYieldToCsv(List<FirstPassYieldModel> dataList)
+        {
+            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "CSV文件 (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                FileName = $"一次下线不良率_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            };
+
+            if (saveFileDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                using (var writer = new StreamWriter(saveFileDialog.FileName, false, Encoding.UTF8))
+                {
+                    writer.WriteLine("序号,轮毂型号,样式,轮毂数量,二检1号不良,精车1号不良,精车2号不良,返修合格数,不良数,涂装总数,不良率,成品率");
+
+                    foreach (var item in dataList)
+                    {
+                        writer.WriteLine($"{EscapeCsvField(item.Index)},{EscapeCsvField(item.Model)}," +
+                            $"{EscapeCsvField(item.WheelStyle)},{item.WheelCount}," +
+                            $"{item.InspectionBad2},{item.LatheBad1},{item.LatheBad2}," +
+                            $"{item.RepairOk},{item.BadCount},{item.CoatingTotal}," +
+                            $"{item.BadRate:P2},{item.YieldRate:P2}");
+                    }
+                }
+
+                MessageBox.Show($"导出成功！共 {dataList.Count} 条记录。\n文件路径：{saveFileDialog.FileName}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExportMissedInspectionToCsv(List<MissedInspectionModel> dataList)
+        {
+            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "CSV文件 (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                FileName = $"一检漏检率_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            };
+
+            if (saveFileDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                using (var writer = new StreamWriter(saveFileDialog.FileName, false, Encoding.UTF8))
+                {
+                    writer.WriteLine("序号,轮毂型号,样式,轮毂数量,二检1号不良,涂装总数,漏检率");
+
+                    foreach (var item in dataList)
+                    {
+                        writer.WriteLine($"{EscapeCsvField(item.Index)},{EscapeCsvField(item.Model)}," +
+                            $"{EscapeCsvField(item.WheelStyle)},{item.WheelCount}," +
+                            $"{item.InspectionBad2},{item.CoatingTotal},{item.MissRate:P2}");
+                    }
+                }
+
+                MessageBox.Show($"导出成功！共 {dataList.Count} 条记录。\n文件路径：{saveFileDialog.FileName}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void ExportPackagingToCsv(List<PackagingModel> dataList)
+        {
+            var saveFileDialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Filter = "CSV文件 (*.csv)|*.csv",
+                DefaultExt = ".csv",
+                FileName = $"入库包装数_{DateTime.Now:yyyyMMdd_HHmmss}.csv"
+            };
+
+            if (saveFileDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                using (var writer = new StreamWriter(saveFileDialog.FileName, false, Encoding.UTF8))
+                {
+                    writer.WriteLine("序号,轮毂型号,样式,二检总数,二检1号不良,二检合格数,二检合格率");
+
+                    foreach (var item in dataList)
+                    {
+                        writer.WriteLine($"{EscapeCsvField(item.Index)},{EscapeCsvField(item.Model)}," +
+                            $"{EscapeCsvField(item.WheelStyle)},{item.InspectionTotal}," +
+                            $"{item.InspectionBad2},{item.InspectionOk},{item.InspectionOkRate:P2}");
+                    }
+                }
+
+                MessageBox.Show($"导出成功！共 {dataList.Count} 条记录。\n文件路径：{saveFileDialog.FileName}", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"导出失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
         /// <summary>
         /// CSV字段转义（处理逗号、引号、换行）
         /// </summary>
@@ -767,8 +1366,6 @@ namespace SQLManage.ViewModels
                 return;
             }
 
-
-            IdentificationDataVisibility = Visibility.Hidden;
             var pDB = new SqlAccess().SystemDataAccess;
             // 从数据库读取的数据
             var productionList = pDB.Queryable<Tbl_productiondatamodel>()
@@ -785,7 +1382,7 @@ namespace SQLManage.ViewModels
             }
             StatisticsDatas?.Clear();
             StatisticsDatas = new ObservableCollection<StatisticsDataModel>(statistics);
-            StatisticsDataVisibility = Visibility.Visible;
+            CurrentDataView = DataViewType.Statistics;
             //EventMessage.SystemMessageDisplay("数据统计完成", MessageType.Success);
 
 
